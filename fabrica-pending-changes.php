@@ -29,7 +29,7 @@ class PendingChanges {
 
 		add_action('wp_insert_post_data', array($this, 'saveAcceptedRevision'), 10, 2);
 		// [TODO] show only for edit post
-		add_action('post_submitbox_misc_actions', array($this, 'addButton'));
+		add_action('post_submitbox_start', array($this, 'addButton'));
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
 		add_action('admin_enqueue_scripts', array($this, 'loadScript'));
 	}
@@ -88,11 +88,9 @@ class PendingChanges {
 
 	public function addButton() {
 		// [TODO] show only for editors (and possibly original author)
-		// [FIXME] fix ID and styling
-		$html  = '<div id="major-publishing-actions" style="overflow:hidden">';
-		$html .= '<div id="publishing-action">';
+		// [FIXME] fix: move styling to CSS file
+		$html = '<div class="pending-changes-action" style="text-align: right; line-height: 23px; margin-bottom: 12px;">';
 		$html .= '<input type="submit" name="pending-changes" id="pending-changes-submit" value="Save draft" class="button-primary">';
-		$html .= '</div>';
 		$html .= '</div>';
 		echo $html;
 	}
