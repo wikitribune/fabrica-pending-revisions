@@ -37,7 +37,7 @@ class PendingChanges {
 	public function acceptedRevisionContent($content) {
 		$postID = get_the_ID();
 		if (get_post_type($postID) != 'post') { return $content; }
-		$acceptedID = get_field('accepted_revision_id', $postID);
+		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
 		$contentRevision = get_post($acceptedID);
@@ -46,7 +46,7 @@ class PendingChanges {
 
 	public function acceptedRevisionTitle($title, $postID) {
 		if (get_post_type($postID) != 'post') { return $title; }
-		$acceptedID = get_field('accepted_revision_id', $postID);
+		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
 		$contentRevision = get_post($acceptedID);
@@ -55,7 +55,7 @@ class PendingChanges {
 
 	public function acceptedRevisionField($value, $postID, $field) {
 		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
-		$acceptedID = get_field('accepted_revision_id', $postID);
+		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
 		return get_field($field['name'], $acceptedID);
@@ -66,7 +66,10 @@ class PendingChanges {
 			if (!get_post_meta($postArray['ID'], '_accepted_revision_id', true)) {
 
 				// Get accepted revision
-				$args = array('posts_per_page' => 1);
+				$args = array(
+					'name' => '1-revision-v1', // Ignore autosaves
+					'posts_per_page' => 1
+				);
 				$revisions = wp_get_post_revisions($postArray['ID'], $args);
 
 				if (count($revisions) < 1) { return $data; } // No accepted revision
@@ -98,7 +101,7 @@ class PendingChanges {
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
-		$acceptedID = get_field('accepted_revision_id', $post->ID) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_accepted_revision_id', true) ?: $post->ID;
 		$revisionsData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
 			$revisionsData['current'] = true;
