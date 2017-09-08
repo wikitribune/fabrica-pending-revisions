@@ -21,11 +21,11 @@ class Plugin {
 
 		if (!is_admin()) {
 			// [TODO] move frontend hooks and functions to their own class?
-			add_action('the_content', array($this, 'acceptedRevisionContent'));
-			add_action('the_title', array($this, 'acceptedRevisionTitle'), 10, 2);
-			add_action('the_excerpt', array($this, 'acceptedRevisionExcerpt'), 10, 2);
-			add_action('acf/format_value_for_api', array($this, 'acceptedRevisionField'), 10, 3); // ACF v4
-			add_action('acf/format_value', array($this, 'acceptedRevisionField'), 10, 3); // ACF v5+
+			add_filter('the_content', array($this, 'acceptedRevisionContent'), -1);
+			add_filter('the_title', array($this, 'acceptedRevisionTitle'), -1, 2);
+			add_filter('the_excerpt', array($this, 'acceptedRevisionExcerpt'), -1, 2);
+			add_filter('acf/format_value_for_api', array($this, 'acceptedRevisionField'), -1, 3); // ACF v4
+			add_filter('acf/format_value', array($this, 'acceptedRevisionField'), -1, 3); // ACF v5+
 
 			return;
 		}
@@ -43,8 +43,7 @@ class Plugin {
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
-		$contentRevision = get_post($acceptedID);
-		return $contentRevision->post_content;
+		return get_post_field('post_content', $acceptedID);
 	}
 
 	public function acceptedRevisionTitle($title, $postID) {
@@ -52,8 +51,7 @@ class Plugin {
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
-		$contentRevision = get_post($acceptedID);
-		return $contentRevision->post_title;
+		return get_post_field('post_title', $acceptedID);
 	}
 
 	public function acceptedRevisionExcerpt($excerpt, $postID) {
@@ -61,8 +59,7 @@ class Plugin {
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
-		$contentRevision = get_post($acceptedID);
-		return $contentRevision->post_excerpt;
+		return get_post_field('post_excerpt', $acceptedID);
 	}
 
 	public function acceptedRevisionField($value, $postID, $field) {
@@ -75,12 +72,20 @@ class Plugin {
 	}
 
 	public function saveAcceptedRevision($postID, $post, $update) {
-		if (!isset($_POST['pending-changes']) && // Post set to publish
-			$post->post_type === 'revision' &&   // Revision "post"
-			$_POST['action'] !== 'heartbeat') {  // Not an autosave revision
+		if (isset($_POST['pending-changes'])) { return; }
 
-			// This is the current accepted revision: update post pointer
-			update_post_meta($post->post_parent, '_fcp_accepted_revision_id', $postID);
+		// Get accepted revision
+		$args = array(
+			'post_author' => $post->post_author,
+			'posts_per_page' => 1
+		);
+		$revisions = wp_get_post_revisions($postID, $args);
+		if (count($revisions) < 1) { return $data; } // No accepted revision
+
+		// Set pointer to accepted revision
+		$acceptedID = current($revisions)->ID;
+		if (!add_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID, true)) {
+			update_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID, '');
 		}
 	}
 
