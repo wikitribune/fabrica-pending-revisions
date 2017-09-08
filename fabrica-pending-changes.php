@@ -54,6 +54,7 @@ class PendingChanges {
 	}
 
 	public function acceptedRevisionField($value, $postID, $field) {
+		if (!function_exists('get_field')) { return $value; }
 		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
@@ -67,7 +68,7 @@ class PendingChanges {
 
 				// Get accepted revision
 				$args = array(
-					'name' => '1-revision-v1', // Ignore autosaves
+					'name' => $postArray['ID'] . '-revision-v1', // Ignore autosaves
 					'posts_per_page' => 1
 				);
 				$revisions = wp_get_post_revisions($postArray['ID'], $args);

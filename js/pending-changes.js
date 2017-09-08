@@ -1,21 +1,21 @@
 (function($) {
 	$(function() {
-		// Get aceepted revision index in revisions data array
+		// Get accepted revision index in revisions data array
 		var revisionData = _wpRevisionsSettings.revisionData,
-			aceeptedIndex = revisionData.length - 1;
-		for (var i = aceeptedIndex; i >= 0; i--) {
+			acceptedIndex = revisionData.length - 1;
+		for (var i = acceptedIndex; i >= 0; i--) {
 			revision = revisionData[i];
 			if (revision.current) {
-				aceeptedIndex = i;
+				acceptedIndex = i;
 				break;
 			}
 		}
 
-		// Mark the aceepted revision visually
-		$('.revisions-tickmarks div:nth-child(' + (aceeptedIndex + 1) + ')').css({
+		// Mark the accepted revision visually
+		$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
 			borderLeft: '3px solid crimson'
 		});
-		var aceeptedPosition = (aceeptedIndex + 1) / revisionData.length * 100,
+		var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
 		$pendingChangesTickmarks = $('<span class="fc-current-revision-tickmark">');
 		$pendingChangesTickmarks.css({
 			position: 'absolute',
@@ -24,8 +24,8 @@
 			'-moz-box-sizing': 'border-box',
 			boxSizing: 'border-box',
 			display: 'block',
-			left: aceeptedPosition + '%',
-			width: (100 - aceeptedPosition) + '%',
+			left: acceptedPosition + '%',
+			width: (100 - acceptedPosition) + '%',
 			border: 'none',
 			backgroundColor: 'lightgray',
 		});
