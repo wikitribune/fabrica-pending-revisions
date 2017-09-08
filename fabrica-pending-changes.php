@@ -21,6 +21,7 @@ class PendingChanges {
 			// [TODO] move frontend hooks and functions to their own class?
 			add_action('the_content', array($this, 'acceptedRevisionContent'));
 			add_action('the_title', array($this, 'acceptedRevisionTitle'), 10, 2);
+			add_action('the_excerpt', array($this, 'acceptedRevisionExcerpt'), 10, 2);
 			add_action('acf/format_value_for_api', array($this, 'acceptedRevisionField'), 10, 3); // ACF v4
 			add_action('acf/format_value', array($this, 'acceptedRevisionField'), 10, 3); // ACF v5+
 
@@ -41,7 +42,7 @@ class PendingChanges {
 		if (!$acceptedID) { return $content; }
 
 		$contentRevision = get_post($acceptedID);
-		return $contentRevision->post_content;
+		return apply_filters('the_content', $post->post_content);
 	}
 
 	public function acceptedRevisionTitle($title, $postID) {
@@ -50,7 +51,16 @@ class PendingChanges {
 		if (!$acceptedID) { return $title; }
 
 		$contentRevision = get_post($acceptedID);
-		return $contentRevision->post_title;
+		return apply_filters('the_title', $post->post_title);
+	}
+
+	public function acceptedRevisionExcerpt($excerpt, $postID) {
+		if (get_post_type($postID) != 'post') { return $excerpt; }
+		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
+		if (!$acceptedID) { return $excerpt; }
+
+		$contentRevision = get_post($acceptedID);
+		return apply_filters('the_excerpt', $post->post_excerpt);
 	}
 
 	public function acceptedRevisionField($value, $postID, $field) {
