@@ -11,9 +11,11 @@ License: GPL-2.0+
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 */
 
+namespace Fabrica\PendingChanges;
+
 if (!defined('WPINC')) { die(); }
 
-class PendingChanges {
+class Plugin {
 
 	public function __construct() {
 
@@ -28,7 +30,7 @@ class PendingChanges {
 			return;
 		}
 
-		add_action('wp_insert_post_data', array($this, 'saveAcceptedRevision'), 10, 2);
+		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		// [TODO] show only for edit post
 		add_action('post_submitbox_start', array($this, 'addButton'));
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
@@ -38,66 +40,48 @@ class PendingChanges {
 	public function acceptedRevisionContent($content) {
 		$postID = get_the_ID();
 		if (get_post_type($postID) != 'post') { return $content; }
-		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
 		$contentRevision = get_post($acceptedID);
-		return apply_filters('the_content', $post->post_content);
+		return $contentRevision->post_content;
 	}
 
 	public function acceptedRevisionTitle($title, $postID) {
 		if (get_post_type($postID) != 'post') { return $title; }
-		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
 		$contentRevision = get_post($acceptedID);
-		return apply_filters('the_title', $post->post_title);
+		return $contentRevision->post_title;
 	}
 
 	public function acceptedRevisionExcerpt($excerpt, $postID) {
 		if (get_post_type($postID) != 'post') { return $excerpt; }
-		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
 		$contentRevision = get_post($acceptedID);
-		return apply_filters('the_excerpt', $post->post_excerpt);
+		return $contentRevision->post_excerpt;
 	}
 
 	public function acceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
 		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
-		$acceptedID = get_post_meta($postID, '_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
 		return get_field($field['name'], $acceptedID);
 	}
 
-	public function saveAcceptedRevision($data, $postArray) {
-		if (isset($_POST['pending-changes'])) {
-			if (!get_post_meta($postArray['ID'], '_accepted_revision_id', true)) {
+	public function saveAcceptedRevision($postID, $post, $update) {
+		if (!isset($_POST['pending-changes']) && // Post set to publish
+			$post->post_type === 'revision' &&   // Revision "post"
+			$_POST['action'] !== 'heartbeat') {  // Not an autosave revision
 
-				// Get accepted revision
-				$args = array(
-					'name' => $postArray['ID'] . '-revision-v1', // Ignore autosaves
-					'posts_per_page' => 1
-				);
-				$revisions = wp_get_post_revisions($postArray['ID'], $args);
-
-				if (count($revisions) < 1) { return $data; } // No accepted revision
-
-				// Set pointer to accepted revision
-				$acceptedID = current($revisions)->ID;
-				if (!add_post_meta($postArray['ID'], '_accepted_revision_id', $acceptedID, true)) {
-					update_post_meta($postArray['ID'], '_accepted_revision_id', $acceptedID, '');
-				}
-			}
-		} else {
-
-			// Publishing post: clear the accepted revision pointer since `post` itself is accepted
-			update_post_meta($postArray['ID'], '_accepted_revision_id', '');
+			// This is the current accepted revision: update post pointer
+			update_post_meta($post->post_parent, '_fcp_accepted_revision_id', $postID);
 		}
-
-		return $data;
 	}
 
 	public function addButton() {
@@ -112,7 +96,7 @@ class PendingChanges {
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
-		$acceptedID = get_post_meta($post->ID, '_accepted_revision_id', true) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_fcp_accepted_revision_id', true) ?: $post->ID;
 		$revisionsData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
 			$revisionsData['current'] = true;
@@ -134,4 +118,4 @@ class PendingChanges {
 	}
 }
 
-new PendingChanges();
+new Plugin();
