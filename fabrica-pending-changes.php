@@ -42,7 +42,7 @@ class Plugin {
 	// Replace content with post's accepted revision content
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
-		if (get_post_type($postID) != 'post') { return $content; }
+		if (empty($postID) || get_post_type($postID) != 'post') { return $content; }
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
@@ -84,18 +84,32 @@ class Plugin {
 	public function showEditingModeMetaBox() {
 
 		// Dropdown to select post's editing mode
+		$postID = get_the_ID();
+		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
+
+		$editingMode = get_post_meta($postID, '_fcp_editing_mode', true) ?: '';
 		echo '<p><label for="editing-mode" class="editing-mode__label">Editing Mode</label></p>';
 		echo '<select name="editing-mode" id="editing-mode" class="editing-mode__select">';
-		echo '<option value="">Open</option>';
-		echo '<option value="pending">Edits require approval</option>';
-		echo '<option value="locked">Locked</option>';
+		echo '<option value=""' . (empty($editingMode) ? ' selected="selected"' : '') . '>Open</option>';
+		echo '<option value="pending"' . ($editingMode === 'pending' ? ' selected="selected"' : '') . '>Edits require approval</option>';
+		echo '<option value="locked"' . ($editingMode === 'locked' ? ' selected="selected"' : '') . '>Locked</option>';
 		echo '</select>';
 	}
 
 	public function saveAcceptedRevision($postID, $post, $update) {
 
-		// Publish only if save is set publish and user has permissions to do so
-		if (!isset($_POST['publish-update']) || !current_user_can('publish_posts', $postID)) { return; }
+		// Check if user is authorised to publish changes
+		if (!current_user_can('publish_posts', $postID)) { return; }
+
+		// Save editing mode changes
+		if (isset($_POST['editing-mode'])) {
+			if (!add_post_meta($postID, '_fcp_editing_mode', $_POST['editing-mode'], true)) {
+				update_post_meta($postID, '_fcp_editing_mode', $_POST['editing-mode']);
+			}
+		}
+
+		// Publish only if save is set publish
+		if (!isset($_POST['publish-update'])) { return; }
 
 		// Get accepted revision
 		$args = array(
@@ -108,19 +122,20 @@ class Plugin {
 		// Set pointer to accepted revision
 		$acceptedID = current($revisions)->ID;
 		if (!add_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID, true)) {
-			update_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID, '');
+			update_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID);
 		}
 	}
 
 	public function addPublishButton() {
 
 		// Show button to explicitly save as pending changes if user has sufficient permissions
-		if (current_user_can('publish_posts', get_the_ID())) {
-			$html = '<div class="publish-update-action">';
-			$html .= '<input type="submit" name="publish-update" id="publish-update-submit" value="Publish update" class="button-primary publish-update-action__button">';
-			$html .= '</div>';
-			echo $html;
-		}
+		$postID = get_the_ID();
+		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
+
+		$html = '<div class="publish-update-action">';
+		$html .= '<input type="submit" name="publish-update" id="publish-update-submit" value="Publish update" class="button-primary publish-update-action__button">';
+		$html .= '</div>';
+		echo $html;
 	}
 
 	public function alterText($translation, $text) {
