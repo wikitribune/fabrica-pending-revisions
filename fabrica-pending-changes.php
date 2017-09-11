@@ -21,23 +21,26 @@ class Plugin {
 
 		if (!is_admin()) {
 			// [TODO] move frontend hooks and functions to their own class?
-			add_filter('the_content', array($this, 'acceptedRevisionContent'), -1);
-			add_filter('the_title', array($this, 'acceptedRevisionTitle'), -1, 2);
-			add_filter('the_excerpt', array($this, 'acceptedRevisionExcerpt'), -1, 2);
-			add_filter('acf/format_value_for_api', array($this, 'acceptedRevisionField'), -1, 3); // ACF v4
-			add_filter('acf/format_value', array($this, 'acceptedRevisionField'), -1, 3); // ACF v5+
+			add_filter('the_content', array($this, 'filterAcceptedRevisionContent'), -1);
+			add_filter('the_title', array($this, 'filterAcceptedRevisionTitle'), -1, 2);
+			add_filter('the_excerpt', array($this, 'filterAcceptedRevisionExcerpt'), -1, 2);
+			add_filter('acf/format_value_for_api', array($this, 'filterAcceptedRevisionField'), -1, 3); // ACF v4
+			add_filter('acf/format_value', array($this, 'filterAcceptedRevisionField'), -1, 3); // ACF v5+
 
 			return;
 		}
 
+		add_action('add_meta_boxes', array($this, 'addMetaBoxes'));
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		// [TODO] show only for edit post
-		add_action('post_submitbox_start', array($this, 'addButton'));
+		add_action('post_submitbox_start', array($this, 'addPublishButton'));
+		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
-		add_action('admin_enqueue_scripts', array($this, 'loadScript'));
+		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 	}
 
-	public function acceptedRevisionContent($content) {
+	// Replace content with post's accepted revision content
+	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
 		if (get_post_type($postID) != 'post') { return $content; }
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
@@ -46,7 +49,8 @@ class Plugin {
 		return get_post_field('post_content', $acceptedID);
 	}
 
-	public function acceptedRevisionTitle($title, $postID) {
+	// Replace title with post's accepted revision title
+	public function filterAcceptedRevisionTitle($title, $postID) {
 		if (get_post_type($postID) != 'post') { return $title; }
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
@@ -54,7 +58,8 @@ class Plugin {
 		return get_post_field('post_title', $acceptedID);
 	}
 
-	public function acceptedRevisionExcerpt($excerpt, $postID) {
+	// Replace excerpt with post's accepted revision excerpt
+	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
 		if (get_post_type($postID) != 'post') { return $excerpt; }
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
@@ -62,7 +67,8 @@ class Plugin {
 		return get_post_field('post_excerpt', $acceptedID);
 	}
 
-	public function acceptedRevisionField($value, $postID, $field) {
+	// Replace custom fields' data with post's accepted revision custom fields' data
+	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
 		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
@@ -71,8 +77,25 @@ class Plugin {
 		return get_field($field['name'], $acceptedID);
 	}
 
+	public function addMetaBoxes() {
+		add_meta_box('fcp_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
+	}
+
+	public function showEditingModeMetaBox() {
+
+		// Dropdown to select post's editing mode
+		echo '<p><label for="editing-mode" class="editing-mode__label">Editing Mode</label></p>';
+		echo '<select name="editing-mode" id="editing-mode" class="editing-mode__select">';
+		echo '<option value="">Open</option>';
+		echo '<option value="pending">Edits require approval</option>';
+		echo '<option value="locked">Locked</option>';
+		echo '</select>';
+	}
+
 	public function saveAcceptedRevision($postID, $post, $update) {
-		if (isset($_POST['pending-changes'])) { return; }
+
+		// Publish only if save is set publish and user has permissions to do so
+		if (!isset($_POST['publish-update']) || !current_user_can('publish_posts', $postID)) { return; }
 
 		// Get accepted revision
 		$args = array(
@@ -80,7 +103,7 @@ class Plugin {
 			'posts_per_page' => 1
 		);
 		$revisions = wp_get_post_revisions($postID, $args);
-		if (count($revisions) < 1) { return $data; } // No accepted revision
+		if (count($revisions) < 1) { return; } // No accepted revision
 
 		// Set pointer to accepted revision
 		$acceptedID = current($revisions)->ID;
@@ -89,13 +112,28 @@ class Plugin {
 		}
 	}
 
-	public function addButton() {
-		// [TODO] show only for editors (and possibly original author)
-		// [FIXME] fix: move styling to CSS file
-		$html = '<div class="pending-changes-action" style="text-align: right; line-height: 23px; margin-bottom: 12px;">';
-		$html .= '<input type="submit" name="pending-changes" id="pending-changes-submit" value="Save draft" class="button-primary">';
-		$html .= '</div>';
-		echo $html;
+	public function addPublishButton() {
+
+		// Show button to explicitly save as pending changes if user has sufficient permissions
+		if (current_user_can('publish_posts', get_the_ID())) {
+			$html = '<div class="publish-update-action">';
+			$html .= '<input type="submit" name="publish-update" id="publish-update-submit" value="Publish update" class="button-primary publish-update-action__button">';
+			$html .= '</div>';
+			echo $html;
+		}
+	}
+
+	public function alterText($translation, $text) {
+		if ($text == 'Update') {
+
+			// Replace Update button text
+			global $post;
+			if (!$post) {
+				return $translation;
+			}
+			return 'Save as pending changes';
+		}
+		return $translation;
 	}
 
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
@@ -116,9 +154,11 @@ class Plugin {
 		return $revisionsData;
 	}
 
-	public function loadScript($hook_suffix) {
-		if ($hook_suffix == 'revision.php') {
-			wp_enqueue_script('fc-pending-changes', plugin_dir_url( __FILE__ ) . 'js/pending-changes.js', array('jquery', 'revisions'));
+	public function enqueueScripts($hook_suffix) {
+		if ($hook_suffix == 'post.php') {
+			wp_enqueue_style('admin-styles', plugin_dir_url(__FILE__) . 'css/pending-changes.css');
+		} else if ($hook_suffix == 'revision.php') {
+			wp_enqueue_script('fc-pending-changes', plugin_dir_url(__FILE__) . 'js/pending-changes.js', array('jquery', 'revisions'));
 		}
 	}
 }

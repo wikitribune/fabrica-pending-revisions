@@ -1,0 +1,55 @@
+.editing-mode__label {
+	vertical-align: baseline;
+	font-weight: 600;
+}
+
+/* Publish and pending changes buttons */
+
+#major-publishing-actions {
+	display: flex;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+#publishing-action {
+	flex-grow: 1;
+}
+
+.publish-update-action {
+	order: 2;
+	margin-left: auto;
+	padding-left: 12px;
+	line-height: 47px;
+}
+
+#publish-update-submit {
+	height: 30px;
+	padding: 6px 14px;
+	vertical-align: middle;
+	line-height: normal;
+	margin-bottom: 4px;
+}
+
+@media screen and (min-width: 783px) {
+	.publish-update-action {
+		line-height: 23px;
+	}
+
+	#publish-update-submit {
+		padding: 0 12px 2px;
+		line-height: 28px;
+		margin-bottom: 0;
+	}
+}
+
+@media screen and (min-width: 851px) {
+	#delete-action {
+		order: 1;
+		margin-top: 12px;
+	}
+
+	.publish-update-action {
+		margin-left: 0;
+		margin-top: 12px;
+	}
+}
