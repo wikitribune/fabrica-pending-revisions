@@ -17,6 +17,10 @@ if (!defined('WPINC')) { die(); }
 
 class Plugin {
 
+	const EDITING_MODE_OPEN = '';
+	const EDITING_MODE_PENDING = 'pending';
+	const EDITING_MODE_LOCKED = 'locked';
+
 	public function __construct() {
 
 		if (!is_admin()) {
@@ -30,8 +34,10 @@ class Plugin {
 			return;
 		}
 
-		add_action('add_meta_boxes', array($this, 'addMetaBoxes'));
+		add_action('admin_head', array($this, 'hideUpdateButton'));
+		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
+		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
 		// [TODO] show only for edit post
 		add_action('post_submitbox_start', array($this, 'addPublishButton'));
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
@@ -43,7 +49,7 @@ class Plugin {
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
 		if (empty($postID) || get_post_type($postID) != 'post') { return $content; }
-		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
 		return get_post_field('post_content', $acceptedID);
@@ -52,7 +58,7 @@ class Plugin {
 	// Replace title with post's accepted revision title
 	public function filterAcceptedRevisionTitle($title, $postID) {
 		if (get_post_type($postID) != 'post') { return $title; }
-		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
 		return get_post_field('post_title', $acceptedID);
@@ -61,7 +67,7 @@ class Plugin {
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
 		if (get_post_type($postID) != 'post') { return $excerpt; }
-		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
 		return get_post_field('post_excerpt', $acceptedID);
@@ -71,14 +77,30 @@ class Plugin {
 	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
 		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
-		$acceptedID = get_post_meta($postID, '_fcp_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
 		return get_field($field['name'], $acceptedID);
 	}
 
-	public function addMetaBoxes() {
-		add_meta_box('fcp_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
+	public function hideUpdateButton() {
+		$screen = get_current_screen();
+		if ($screen->id !== 'post') { return; }
+		$postID = get_the_ID();
+		if (empty($postID)) { return; }
+
+		// Hide the update/publish button completly if JS is not available to disable it
+		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: '';
+		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $postID)) {
+			echo '<style>#major-publishing-actions { display: none; }</style>';
+		}
+	}
+
+	public function addPermissionsMetaBox() {
+		$postID = get_the_ID();
+		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
+
+		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
 	}
 
 	public function showEditingModeMetaBox() {
@@ -87,29 +109,41 @@ class Plugin {
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
 
-		$editingMode = get_post_meta($postID, '_fcp_editing_mode', true) ?: '';
-		echo '<p><label for="editing-mode" class="editing-mode__label">Editing Mode</label></p>';
-		echo '<select name="editing-mode" id="editing-mode" class="editing-mode__select">';
-		echo '<option value=""' . (empty($editingMode) ? ' selected="selected"' : '') . '>Open</option>';
-		echo '<option value="pending"' . ($editingMode === 'pending' ? ' selected="selected"' : '') . '>Edits require approval</option>';
-		echo '<option value="locked"' . ($editingMode === 'locked' ? ' selected="selected"' : '') . '>Locked</option>';
+		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: '';
+		echo '<p><label for="fpc-editing-mode" class="fpc-editing-mode__label">Editing Mode</label></p>';
+		echo '<select name="fpc-editing-mode" id="fpc-editing-mode" class="fpc-editing-mode__select">';
+		echo '<option value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' selected="selected"' : '') . '>Open</option>';
+		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
+		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
 		echo '</select>';
+	}
+
+	public function checkSaveAllowed($maybeEmpty, $postArray) {
+		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: '';
+
+		// Check if post is locked (editing not allowed)
+		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $postArray['ID'])) {
+			return false;
+		}
+
+		return $maybeEmpty;
 	}
 
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Check if user is authorised to publish changes
-		if (!current_user_can('publish_posts', $postID)) { return; }
+		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: '';
+		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('publish_posts', $postID)) { return; }
 
 		// Save editing mode changes
-		if (isset($_POST['editing-mode'])) {
-			if (!add_post_meta($postID, '_fcp_editing_mode', $_POST['editing-mode'], true)) {
-				update_post_meta($postID, '_fcp_editing_mode', $_POST['editing-mode']);
+		if (isset($_POST['fpc-editing-mode'])) {
+			if (!add_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode'], true)) {
+				update_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode']);
 			}
 		}
 
 		// Publish only if save is set publish
-		if (!isset($_POST['publish-update'])) { return; }
+		if ($editingMode === self::EDITING_MODE_PENDING && !isset($_POST['fpc-publish-update'])) { return; }
 
 		// Get accepted revision
 		$args = array(
@@ -121,19 +155,21 @@ class Plugin {
 
 		// Set pointer to accepted revision
 		$acceptedID = current($revisions)->ID;
-		if (!add_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID, true)) {
-			update_post_meta($postID, '_fcp_accepted_revision_id', $acceptedID);
+		if (!add_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID, true)) {
+			update_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID);
 		}
 	}
 
 	public function addPublishButton() {
+		$screen = get_current_screen();
+		if ($screen->id !== 'post') { return; }
 
 		// Show button to explicitly save as pending changes if user has sufficient permissions
-		$postID = get_the_ID();
-		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
+		global $post;
+		if (empty($post) || !current_user_can('publish_posts', $post->ID) || $post->post_status !== 'publish') { return; }
 
-		$html = '<div class="publish-update-action">';
-		$html .= '<input type="submit" name="publish-update" id="publish-update-submit" value="Publish update" class="button-primary publish-update-action__button">';
+		$html = '<div class="fpc-publish-update-action">';
+		$html .= '<input type="submit" name="fpc-publish-update" id="fpc-publish-update-submit" value="Publish update" class="button-primary fpc-publish-update-action__button">';
 		$html .= '</div>';
 		echo $html;
 	}
@@ -154,7 +190,7 @@ class Plugin {
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
-		$acceptedID = get_post_meta($post->ID, '_fcp_accepted_revision_id', true) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_fpc_accepted_revision_id', true) ?: $post->ID;
 		$revisionsData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
 			$revisionsData['current'] = true;
@@ -169,11 +205,28 @@ class Plugin {
 		return $revisionsData;
 	}
 
+	public function preparePostForJS() {
+		global $post;
+		if (!$post) {
+			return array();
+		}
+
+		// Data to pass to Post's Javascript
+		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: '';
+		return array(
+			'post' => $post,
+			'editingMode' => $editingMode,
+			'canUserPublishPosts' => current_user_can('publish_posts', $post->ID)
+		);
+	}
+
 	public function enqueueScripts($hook_suffix) {
 		if ($hook_suffix == 'post.php') {
-			wp_enqueue_style('admin-styles', plugin_dir_url(__FILE__) . 'css/pending-changes.css');
+			wp_enqueue_style('fpc-pending-changes-styles', plugin_dir_url(__FILE__) . 'css/pending-changes.css');
+			wp_enqueue_script('fpc-pending-changes-post', plugin_dir_url(__FILE__) . 'js/pending-changes-post.js', array('jquery', 'revisions'));
+			wp_localize_script('fpc-pending-changes-post', 'fpcData', $this->preparePostForJS());
 		} else if ($hook_suffix == 'revision.php') {
-			wp_enqueue_script('fc-pending-changes', plugin_dir_url(__FILE__) . 'js/pending-changes.js', array('jquery', 'revisions'));
+			wp_enqueue_script('fpc-pending-changes-revisions', plugin_dir_url(__FILE__) . 'js/pending-changes-revisions.js', array('jquery', 'revisions'));
 		}
 	}
 }

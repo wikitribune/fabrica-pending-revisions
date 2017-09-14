@@ -1,4 +1,6 @@
-.editing-mode__label {
+/* Editing mode metabox */
+
+.fpc-editing-mode__label {
 	vertical-align: baseline;
 	font-weight: 600;
 }
@@ -15,7 +17,7 @@
 	flex-grow: 1;
 }
 
-.publish-update-action {
+.fpc-publish-update-action {
 	order: 2;
 	margin-left: auto;
 	padding-left: 12px;
@@ -31,7 +33,7 @@
 }
 
 @media screen and (min-width: 783px) {
-	.publish-update-action {
+	.fpc-publish-update-action {
 		line-height: 23px;
 	}
 
@@ -43,12 +45,12 @@
 }
 
 @media screen and (min-width: 851px) {
-	#delete-action {
+	#delete-action:nth-child(2) {
 		order: 1;
 		margin-top: 12px;
 	}
 
-	.publish-update-action {
+	.fpc-publish-update-action {
 		margin-left: 0;
 		margin-top: 12px;
 	}
