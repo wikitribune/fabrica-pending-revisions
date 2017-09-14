@@ -5,53 +5,25 @@
 	font-weight: 600;
 }
 
-/* Publish and pending changes buttons */
+/* Pending changes button */
 
-#major-publishing-actions {
-	display: flex;
-	justify-content: space-between;
-	flex-wrap: wrap;
-}
-
-#publishing-action {
-	flex-grow: 1;
-}
-
-.fpc-publish-update-action {
+.fpc-pending-changes-action {
 	order: 2;
 	margin-left: auto;
 	padding-left: 12px;
 	line-height: 47px;
-}
-
-#publish-update-submit {
-	height: 30px;
-	padding: 6px 14px;
-	vertical-align: middle;
-	line-height: normal;
-	margin-bottom: 4px;
+	text-align: right;
 }
 
 @media screen and (min-width: 783px) {
-	.fpc-publish-update-action {
+	.fpc-pending-changes-action {
+		margin-bottom: 12px;
 		line-height: 23px;
-	}
-
-	#publish-update-submit {
-		padding: 0 12px 2px;
-		line-height: 28px;
-		margin-bottom: 0;
 	}
 }
 
 @media screen and (min-width: 851px) {
-	#delete-action:nth-child(2) {
-		order: 1;
-		margin-top: 12px;
-	}
-
-	.fpc-publish-update-action {
+	.fpc-pending-changes-action {
 		margin-left: 0;
-		margin-top: 12px;
 	}
 }

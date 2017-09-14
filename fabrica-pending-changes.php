@@ -34,13 +34,11 @@ class Plugin {
 			return;
 		}
 
-		add_action('admin_head', array($this, 'hideUpdateButton'));
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
+		add_action('admin_head', array($this, 'hideUpdateButton'));
+		add_action('post_submitbox_start', array($this, 'addPendingChangesButton'));
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
-		// [TODO] show only for edit post
-		add_action('post_submitbox_start', array($this, 'addPublishButton'));
-		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
 		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 	}
@@ -83,43 +81,8 @@ class Plugin {
 		return get_field($field['name'], $acceptedID);
 	}
 
-	public function hideUpdateButton() {
-		$screen = get_current_screen();
-		if ($screen->id !== 'post') { return; }
-		$postID = get_the_ID();
-		if (empty($postID)) { return; }
-
-		// Hide the update/publish button completly if JS is not available to disable it
-		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: '';
-		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $postID)) {
-			echo '<style>#major-publishing-actions { display: none; }</style>';
-		}
-	}
-
-	public function addPermissionsMetaBox() {
-		$postID = get_the_ID();
-		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
-
-		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
-	}
-
-	public function showEditingModeMetaBox() {
-
-		// Dropdown to select post's editing mode
-		$postID = get_the_ID();
-		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
-
-		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: '';
-		echo '<p><label for="fpc-editing-mode" class="fpc-editing-mode__label">Editing Mode</label></p>';
-		echo '<select name="fpc-editing-mode" id="fpc-editing-mode" class="fpc-editing-mode__select">';
-		echo '<option value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' selected="selected"' : '') . '>Open</option>';
-		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
-		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
-		echo '</select>';
-	}
-
 	public function checkSaveAllowed($maybeEmpty, $postArray) {
-		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: '';
+		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 
 		// Check if post is locked (editing not allowed)
 		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $postArray['ID'])) {
@@ -132,18 +95,18 @@ class Plugin {
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Check if user is authorised to publish changes
-		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: '';
+		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('publish_posts', $postID)) { return; }
 
 		// Save editing mode changes
-		if (isset($_POST['fpc-editing-mode'])) {
+		if (isset($_POST['fpc-editing-mode']) && current_user_can('publish_posts', $postID)) {
 			if (!add_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode'], true)) {
 				update_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode']);
 			}
 		}
 
-		// Publish only if save is set publish
-		if ($editingMode === self::EDITING_MODE_PENDING && !isset($_POST['fpc-publish-update'])) { return; }
+		// Publish only if not set to save as pending changes
+		if (isset($_POST['fpc-pending-changes'])) { return; }
 
 		// Get accepted revision
 		$args = array(
@@ -160,31 +123,73 @@ class Plugin {
 		}
 	}
 
-	public function addPublishButton() {
+	function showPendingApprovalModeNotification() {
+		echo '<div class="notice notice-warning"><p>' . __('Post changes require editors approval.', 'fabrica-pending-changes') . '</p></div>';
+	}
+
+	function showLockedModeNotification() {
+		echo '<div class="notice notice-warning"><p>' . __('Post changes are locked.', 'fabrica-pending-changes') . '</p></div>';
+	}
+
+	public function hideUpdateButton() {
+		$screen = get_current_screen();
+		if ($screen->id !== 'post') { return; }
+		$postID = get_the_ID();
+		if (empty($postID) || current_user_can('publish_posts', $postID)) { return; }
+
+		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		if ($editingMode === self::EDITING_MODE_PENDING) {
+
+			// Show only save as pending button
+			echo '<style>#publishing-action { display: none; }';
+			echo '#major-publishing-actions .fpc-pending-changes-action { margin-bottom: 0; }</style>';
+			add_action('admin_notices', array($this, 'showPendingApprovalModeNotification'));
+		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
+
+			// Hide the update/publish button completly if JS is not available to disable it
+			echo '<style>#major-publishing-actions { display: none; }</style>';
+			add_action('admin_notices', array($this, 'showLockedModeNotification'));
+		}
+	}
+
+	public function addPendingChangesButton() {
+
+		// Show button to explicitly save as pending changes
 		$screen = get_current_screen();
 		if ($screen->id !== 'post') { return; }
 
-		// Show button to explicitly save as pending changes if user has sufficient permissions
+		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
-		if (empty($post) || !current_user_can('publish_posts', $post->ID) || $post->post_status !== 'publish') { return; }
+		if (empty($post) || $post->post_status !== 'publish') { return; }
+		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $post->ID)) { return; }
 
-		$html = '<div class="fpc-publish-update-action">';
-		$html .= '<input type="submit" name="fpc-publish-update" id="fpc-publish-update-submit" value="Publish update" class="button-primary fpc-publish-update-action__button">';
+		$html = '<div class="fpc-pending-changes-action">';
+		$html .= '<input type="submit" name="fpc-pending-changes" id="fpc-pending-changes-submit" value="Save as pending changes" class="button-primary fpc-pending-changes-action__button">';
 		$html .= '</div>';
 		echo $html;
 	}
 
-	public function alterText($translation, $text) {
-		if ($text == 'Update') {
+	public function addPermissionsMetaBox() {
+		$postID = get_the_ID();
+		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
 
-			// Replace Update button text
-			global $post;
-			if (!$post) {
-				return $translation;
-			}
-			return 'Save as pending changes';
-		}
-		return $translation;
+		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
+	}
+
+	public function showEditingModeMetaBox() {
+
+		// Dropdown to select post's editing mode
+		$postID = get_the_ID();
+		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
+
+		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		echo '<p><label for="fpc-editing-mode" class="fpc-editing-mode__label">Editing Mode</label></p>';
+		echo '<select name="fpc-editing-mode" id="fpc-editing-mode" class="fpc-editing-mode__select">';
+		echo '<option value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' selected="selected"' : '') . '>Open</option>';
+		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
+		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
+		echo '</select>';
 	}
 
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
@@ -212,7 +217,7 @@ class Plugin {
 		}
 
 		// Data to pass to Post's Javascript
-		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: '';
+		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
