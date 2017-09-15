@@ -26,6 +26,10 @@
 	align-self: flex-end;
 }
 
+#publishing-action:nth-child(2):nth-last-child(2) {
+	width: 100%; /* Align button right when no other button is displayed */
+}
+
 .fpc-pending-changes-action {
 	line-height: 47px;
 	text-align: right;

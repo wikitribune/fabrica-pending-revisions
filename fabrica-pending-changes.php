@@ -134,9 +134,6 @@ class Plugin {
 
 		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode === self::EDITING_MODE_PENDING) {
-
-			// Only one button is shown, so flex display is not necessary
-			echo '<style>#major-publishing-actions { display: block; }</style>';
 			add_action('admin_notices', array($this, 'showPendingApprovalModeNotification'));
 		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
 
