@@ -34,10 +34,12 @@ class Plugin {
 			return;
 		}
 
+		add_action('wp_ajax_fpc-editing-mode-save', array($this, 'savePermissions'));
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		add_action('admin_head', array($this, 'hideUpdateButton'));
 		add_action('post_submitbox_start', array($this, 'addPendingChangesButton'));
+		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
 		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
@@ -98,19 +100,12 @@ class Plugin {
 		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('publish_posts', $postID)) { return; }
 
-		// Save editing mode changes
-		if (isset($_POST['fpc-editing-mode']) && current_user_can('publish_posts', $postID)) {
-			if (!add_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode'], true)) {
-				update_post_meta($postID, '_fpc_editing_mode', $_POST['fpc-editing-mode']);
-			}
-		}
-
 		// Publish only if not set to save as pending changes
 		if (isset($_POST['fpc-pending-changes'])) { return; }
 
 		// Get accepted revision
 		$args = array(
-			'post_author' => $post->post_author,
+			'post_author' => get_current_user_id(),
 			'posts_per_page' => 1
 		);
 		$revisions = wp_get_post_revisions($postID, $args);
@@ -140,9 +135,8 @@ class Plugin {
 		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 
-			// Show only save as pending button
-			echo '<style>#publishing-action { display: none; }';
-			echo '#major-publishing-actions .fpc-pending-changes-action { margin-bottom: 0; }</style>';
+			// Only one button is shown, so flex display is not necessary
+			echo '<style>#major-publishing-actions { display: block; }</style>';
 			add_action('admin_notices', array($this, 'showPendingApprovalModeNotification'));
 		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
 
@@ -161,11 +155,10 @@ class Plugin {
 		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
 		if (empty($post) || $post->post_status !== 'publish') { return; }
-		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
-		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('publish_posts', $post->ID)) { return; }
+		if (!current_user_can('publish_posts', $post->ID)) { return; }
 
 		$html = '<div class="fpc-pending-changes-action">';
-		$html .= '<input type="submit" name="fpc-pending-changes" id="fpc-pending-changes-submit" value="Save as pending changes" class="button-primary fpc-pending-changes-action__button">';
+		$html .= '<input type="submit" name="fpc-pending-changes" id="fpc-pending-changes-submit" value="Save pending" class="button fpc-pending-changes-action__button">';
 		$html .= '</div>';
 		echo $html;
 	}
@@ -190,6 +183,31 @@ class Plugin {
 		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
 		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
 		echo '</select>';
+		echo '<p class="fpc-editing-mode__button"><button class="button">Save</button></p>';
+	}
+
+	public function savePermissions() {
+		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) { return; }
+		$postID = $_POST['data']['postID'];
+		$editingMode = $_POST['data']['editingMode'];
+		if (!add_post_meta($postID, '_fpc_editing_mode', $editingMode, true)) {
+			update_post_meta($postID, '_fpc_editing_mode', $editingMode);
+		}
+		exit();
+	}
+
+	public function alterText($translation, $text) {
+		if ($text == 'Update') {
+
+			// Replace Update button text
+			global $post;
+			if (empty($post) || $post->post_status !== 'publish') { return $translation; }
+			$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+			if ($editingMode !== self::EDITING_MODE_PENDING || current_user_can('publish_posts', $post->ID)) { return $translation; }
+
+			return 'Suggest edit';
+		}
+		return $translation;
 	}
 
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
@@ -221,7 +239,8 @@ class Plugin {
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
-			'canUserPublishPosts' => current_user_can('publish_posts', $post->ID)
+			'canUserPublishPosts' => current_user_can('publish_posts', $post->ID),
+			'url' => admin_url('admin-ajax.php')
 		);
 	}
 

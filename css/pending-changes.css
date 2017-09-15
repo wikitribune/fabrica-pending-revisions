@@ -5,25 +5,52 @@
 	font-weight: 600;
 }
 
-/* Pending changes button */
+.fpc-editing-mode__button {
+	text-align: right;
+}
+
+/* Pending changes and Publish buttons */
+
+#major-publishing-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+
+#major-publishing-actions .clear {
+	display: none;
+}
+
+#publishing-action {
+	float: none;
+	align-self: flex-end;
+}
 
 .fpc-pending-changes-action {
-	order: 2;
-	margin-left: auto;
-	padding-left: 12px;
 	line-height: 47px;
 	text-align: right;
 }
 
 @media screen and (min-width: 783px) {
 	.fpc-pending-changes-action {
-		margin-bottom: 12px;
 		line-height: 23px;
 	}
 }
 
 @media screen and (min-width: 851px) {
-	.fpc-pending-changes-action {
-		margin-left: 0;
+	#delete-action {
+		order: -1;
+		width: 100%;
 	}
+
+	.fpc-pending-changes-action {
+		margin-top: 12px;
+	}
+}
+
+/* Utilities */
+
+.fd-util-wait,
+.fd-util-wait * {
+	cursor: wait !important;
 }
