@@ -21,6 +21,8 @@ class Plugin {
 	const EDITING_MODE_PENDING = 'pending';
 	const EDITING_MODE_LOCKED = 'locked';
 
+	public static $postTypesSupported = array('page', 'post');
+
 	public function __construct() {
 
 		if (!is_admin()) {
@@ -52,7 +54,7 @@ class Plugin {
 	// Replace content with post's accepted revision content
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
-		if (empty($postID) || get_post_type($postID) != 'post') { return $content; }
+		if (empty($postID) || !in_array(get_post_type($postID), self::$postTypesSupported)) { return $content; }
 		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
@@ -61,7 +63,7 @@ class Plugin {
 
 	// Replace title with post's accepted revision title
 	public function filterAcceptedRevisionTitle($title, $postID) {
-		if (get_post_type($postID) != 'post') { return $title; }
+		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $title; }
 		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
@@ -70,7 +72,7 @@ class Plugin {
 
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
-		if (get_post_type($postID) != 'post') { return $excerpt; }
+		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $excerpt; }
 		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
@@ -80,7 +82,7 @@ class Plugin {
 	// Replace custom fields' data with post's accepted revision custom fields' data
 	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
-		if (get_post_type($postID) != 'post' || $field['name'] == 'accepted_revision_id') { return $value; }
+		if (!in_array(get_post_type($postID), self::$postTypesSupported) || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
@@ -130,7 +132,7 @@ class Plugin {
 		if (!$revision) { return; } // No accepted revision
 
 		// Set pointer to accepted revision
-		$acceptedID = current($revisions)->ID;
+		$acceptedID = $revision->ID;
 		if (!add_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID, true)) {
 			update_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID);
 		}
@@ -166,8 +168,7 @@ class Plugin {
 	}
 
 	public function initPostEdit() {
-		$screen = get_current_screen();
-		if ($screen->id !== 'post') { return; }
+		if (!in_array(get_current_screen()->id, self::$postTypesSupported)) { return; }
 		$postID = get_the_ID();
 		if (empty($postID)) { return; }
 
@@ -186,8 +187,7 @@ class Plugin {
 	public function addPendingChangesButton() {
 
 		// Show button to explicitly save as pending changes
-		$screen = get_current_screen();
-		if ($screen->id !== 'post') { return; }
+		if (!in_array(get_current_screen()->id, self::$postTypesSupported)) { return; }
 
 		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
