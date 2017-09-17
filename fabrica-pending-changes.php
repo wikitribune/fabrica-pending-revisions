@@ -35,9 +35,13 @@ class Plugin {
 		}
 
 		add_action('wp_ajax_fpc-editing-mode-save', array($this, 'savePermissions'));
+
+		// Exit now if AJAX request, to hook admin-only requests after
+		if (wp_doing_ajax()) { return; }
+
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
-		add_action('admin_head', array($this, 'hideUpdateButton'));
+		add_action('admin_head', array($this, 'initPostEdit'));
 		add_action('post_submitbox_start', array($this, 'addPendingChangesButton'));
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
@@ -94,6 +98,23 @@ class Plugin {
 		return $maybeEmpty;
 	}
 
+	// Returns the latest published revision, excluding autosaves
+	public function getLatestPublishedRevision($postID, $extraArgs=array()) {
+		$args = array_merge(array('posts_per_page' => 1, 'suppress_filters' => false), $extraArgs);
+		add_filter('posts_where', array($this, 'filterOutAutosaves'), 10, 1);
+		$revisions = wp_get_post_revisions($postID, $args);
+		remove_filter('posts_where', array($this, 'filterOutAutosaves'));
+		if (count($revisions) == 0) { return false; }
+		return current($revisions);
+	}
+
+	// Adds the temporary WHERE clause needed to exclude autosave from the revisions list
+	public function filterOutAutosaves($where) {
+		global $wpdb;
+		$where .= " AND " . $wpdb->prefix . "posts.post_name NOT LIKE '%-autosave-v1'";
+		return $where;
+	}
+
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Check if user is authorised to publish changes
@@ -104,12 +125,9 @@ class Plugin {
 		if (isset($_POST['fpc-pending-changes'])) { return; }
 
 		// Get accepted revision
-		$args = array(
-			'post_author' => get_current_user_id(),
-			'posts_per_page' => 1
-		);
-		$revisions = wp_get_post_revisions($postID, $args);
-		if (count($revisions) < 1) { return; } // No accepted revision
+		$args = array('post_author' => get_current_user_id());
+		$revision = $this->getLatestPublishedRevision($postID, $args);
+		if (!$revision) { return; } // No accepted revision
 
 		// Set pointer to accepted revision
 		$acceptedID = current($revisions)->ID;
@@ -126,12 +144,16 @@ class Plugin {
 		echo '<div class="notice notice-warning"><p>' . __('Post changes are locked.', 'fabrica-pending-changes') . '</p></div>';
 	}
 
-	public function hideUpdateButton() {
-		$screen = get_current_screen();
-		if ($screen->id !== 'post') { return; }
-		$postID = get_the_ID();
-		if (empty($postID) || current_user_can('publish_posts', $postID)) { return; }
+	function showRevisionNotTheAcceptedNotification() {
+		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
+		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
+		echo '<div class="notice notice-warning"><p>' . sprintf(__('Other users have already suggested changes to this Story, and their changes are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-changes'), $diffLink) . '</p></div>';
+	}
 
+	private function initEditingMode($postID) {
+		if (current_user_can('publish_posts', $postID)) { return; }
+
+		// Show notifications depending on editing mode
 		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			add_action('admin_notices', array($this, 'showPendingApprovalModeNotification'));
@@ -140,6 +162,24 @@ class Plugin {
 			// Hide the update/publish button completly if JS is not available to disable it
 			echo '<style>#major-publishing-actions { display: none; }</style>';
 			add_action('admin_notices', array($this, 'showLockedModeNotification'));
+		}
+	}
+
+	public function initPostEdit() {
+		$screen = get_current_screen();
+		if ($screen->id !== 'post') { return; }
+		$postID = get_the_ID();
+		if (empty($postID)) { return; }
+
+		$this->initEditingMode($postID);
+
+		// Show notification if post's current accepted revision is not this
+		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true) ?: $postID;
+		$latestRevision = $this->getLatestPublishedRevision($postID);
+		if ($acceptedID && $latestRevision && $acceptedID != $latestRevision->ID) {
+			$this->acceptedID = $acceptedID;
+			$this->latestRevision = $latestRevision;
+			add_action('admin_notices', array($this, 'showRevisionNotTheAcceptedNotification'));
 		}
 	}
 
