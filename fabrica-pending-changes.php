@@ -21,7 +21,7 @@ class Plugin {
 	const EDITING_MODE_PENDING = 'pending';
 	const EDITING_MODE_LOCKED = 'locked';
 
-	public static $postTypesSupported = array('page', 'post');
+	public static $postTypesSupported = array('page', 'post', 'stories', 'projects');
 
 	public function __construct() {
 
@@ -149,7 +149,7 @@ class Plugin {
 	function showRevisionNotTheAcceptedNotification() {
 		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
 		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
-		echo '<div class="notice notice-warning"><p>' . sprintf(__('Other users have already suggested changes to this Story, and their changes are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-changes'), $diffLink) . '</p></div>';
+		echo '<div class="notice notice-warning"><p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-changes'), $diffLink) . '</p></div>';
 	}
 
 	private function initEditingMode($postID) {
@@ -168,7 +168,8 @@ class Plugin {
 	}
 
 	public function initPostEdit() {
-		if (!in_array(get_current_screen()->id, self::$postTypesSupported)) { return; }
+		$screen = get_current_screen();
+		if (!in_array($screen->post_type, self::$postTypesSupported) || $screen->base != 'post') { return; }
 		$postID = get_the_ID();
 		if (empty($postID)) { return; }
 
@@ -187,7 +188,8 @@ class Plugin {
 	public function addPendingChangesButton() {
 
 		// Show button to explicitly save as pending changes
-		if (!in_array(get_current_screen()->id, self::$postTypesSupported)) { return; }
+		$screen = get_current_screen();
+		if (!in_array($screen->post_type, self::$postTypesSupported) || $screen->base != 'post') { return; }
 
 		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
@@ -204,7 +206,7 @@ class Plugin {
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('publish_posts', $postID)) { return; }
 
-		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), 'post', 'side', 'high', array());
+		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), null, 'side', 'high', array());
 	}
 
 	public function showEditingModeMetaBox() {
@@ -220,7 +222,7 @@ class Plugin {
 		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
 		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
 		echo '</select>';
-		echo '<p class="fpc-editing-mode__button"><button class="button">Save</button></p>';
+		echo '<p class="fpc-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
 
 	public function savePermissions() {
