@@ -37,7 +37,7 @@ class Plugin {
 			return;
 		}
 
-		add_action('wp_ajax_fpc-editing-mode-save', array($this, 'savePermissions'));
+		add_action('wp_ajax_fpr-editing-mode-save', array($this, 'savePermissions'));
 
 		// Exit now if AJAX request, to hook admin-only requests after
 		if (wp_doing_ajax()) { return; }
@@ -165,7 +165,7 @@ class Plugin {
 	function showRevisionNotTheAcceptedNotification() {
 		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
 		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
-		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-revisions'), $diffLink) . '</p></div>';
+		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).', 'fabrica-pending-revisions'), $diffLink) . '</p></div>';
 	}
 
 	private function initEditingMode($postID) {
@@ -340,7 +340,7 @@ class Plugin {
 			wp_enqueue_script('fpr-post', plugin_dir_url(__FILE__) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hook_suffix == 'revision.php') {
-			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/evisions.js', array('jquery', 'revisions'));
+			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/revisions.js', array('jquery', 'revisions'));
 		}
 	}
 }

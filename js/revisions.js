@@ -16,7 +16,7 @@
 			borderLeft: '3px solid crimson'
 		});
 		var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
-		$pendingChangesTickmarks = $('<span class="fcp-current-revision-tickmark">');
+		$pendingChangesTickmarks = $('<span class="fcr-current-revision-tickmark">');
 		$pendingChangesTickmarks.css({
 			position: 'absolute',
 			height: '100%',
