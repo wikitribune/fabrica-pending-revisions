@@ -1,15 +1,15 @@
 /* Editing mode metabox */
 
-.fpc-editing-mode__label {
+.fpr-editing-mode__label {
 	vertical-align: baseline;
 	font-weight: 600;
 }
 
-.fpc-editing-mode__button {
+.fpr-editing-mode__button {
 	text-align: right;
 }
 
-/* Pending changes and Publish buttons */
+/* Pending revisions and Publish buttons */
 
 #major-publishing-actions {
 	display: flex;
@@ -30,13 +30,13 @@
 	width: 100%; /* Align button right when no other button is displayed */
 }
 
-.fpc-pending-changes-action {
+.fpr-pending-revisions-action {
 	line-height: 47px;
 	text-align: right;
 }
 
 @media screen and (min-width: 783px) {
-	.fpc-pending-changes-action {
+	.fpr-pending-revisions-action {
 		line-height: 23px;
 	}
 }
@@ -47,7 +47,7 @@
 		width: 100%;
 	}
 
-	.fpc-pending-changes-action {
+	.fpr-pending-revisions-action {
 		margin-top: 12px;
 	}
 }

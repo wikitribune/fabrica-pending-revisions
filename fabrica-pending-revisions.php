@@ -1,17 +1,17 @@
 <?php
 /*
-Plugin Name: Fabrica Pending Changes
+Plugin Name: Fabrica Pending Revisions
 Plugin URI:
 Description:
-Version: 0.0.1
+Version: 0.0.2
 Author: Fabrica
 Author URI: https://fabri.ca/
-Text Domain: fabrica-pending-changes
+Text Domain: fabrica-pending-revisions
 License: GPL-2.0+
 License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 */
 
-namespace Fabrica\PendingChanges;
+namespace Fabrica\PendingRevisions;
 
 if (!defined('WPINC')) { die(); }
 
@@ -48,7 +48,7 @@ class Plugin {
 
 		// Layout, buttons and metaboxes
 		add_action('admin_head', array($this, 'initPostEdit'));
-		add_action('post_submitbox_start', array($this, 'addPendingChangesButton'));
+		add_action('post_submitbox_start', array($this, 'addPendingRevisionsButton'));
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
 
@@ -65,7 +65,7 @@ class Plugin {
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
 		if (empty($postID) || !in_array(get_post_type($postID), self::$postTypesSupported)) { return $content; }
-		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
 		return get_post_field('post_content', $acceptedID);
@@ -74,7 +74,7 @@ class Plugin {
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
 		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $excerpt; }
-		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
 		return get_post_field('post_excerpt', $acceptedID);
@@ -84,7 +84,7 @@ class Plugin {
 	public function filterAcceptedRevisionTitle($title, $post) {
 		$postID = is_object($post) ? $post->ID : $post;
 		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $title; }
-		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
 		return get_post_field('post_title', $acceptedID);
@@ -94,7 +94,7 @@ class Plugin {
 	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
 		if (!in_array(get_post_type($postID), self::$postTypesSupported) || $field['name'] == 'accepted_revision_id') { return $value; }
-		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
 		return get_field($field['name'], $acceptedID);
@@ -104,14 +104,12 @@ class Plugin {
 		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) { return; }
 		$postID = $_POST['data']['postID'];
 		$editingMode = $_POST['data']['editingMode'];
-		if (!add_post_meta($postID, '_fpc_editing_mode', $editingMode, true)) {
-			update_post_meta($postID, '_fpc_editing_mode', $editingMode);
-		}
+		update_post_meta($postID, '_fpr_editing_mode', $editingMode);
 		exit();
 	}
 
 	public function checkSaveAllowed($maybeEmpty, $postArray) {
-		$editingMode = get_post_meta($postArray['ID'], '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = get_post_meta($postArray['ID'], '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 
 		// Check if post is locked (editing not allowed)
 		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('accept_revisions', $postArray['ID'])) {
@@ -148,11 +146,11 @@ class Plugin {
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Check if user is authorised to publish changes
-		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postID)) { return; }
 
-		// Publish only if not set to save as pending changes
-		if (isset($_POST['fpc-pending-changes'])) { return; }
+		// Publish only if not set to save as pending revisions
+		if (isset($_POST['fpr-pending-revisions'])) { return; }
 
 		// Get accepted revision
 		$args = array('post_author' => get_current_user_id());
@@ -161,31 +159,29 @@ class Plugin {
 
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
-		if (!add_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID, true)) {
-			update_post_meta($postID, '_fpc_accepted_revision_id', $acceptedID);
-		}
+		update_post_meta($postID, '_fpr_accepted_revision_id', $acceptedID);
 	}
 
 	function showRevisionNotTheAcceptedNotification() {
 		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
 		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
-		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-changes'), $diffLink) . '</p></div>';
+		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">diff</a> between the published and pending versions).', 'fabrica-pending-revisions'), $diffLink) . '</p></div>';
 	}
 
 	private function initEditingMode($postID) {
 		if (current_user_can('accept_revisions', $postID)) { return; }
 
 		// Show notifications depending on editing mode
-		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', 'fabrica-pending-changes'), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
 		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
 
 			// Hide the update/publish button completly if JS is not available to disable it
 			echo '<style>#major-publishing-actions { display: none; }</style>';
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', 'fabrica-pending-changes'), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p>' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
 		}
 
 		return '';
@@ -201,7 +197,7 @@ class Plugin {
 		$this->notificationMessages = $this->initEditingMode($postID);
 
 		// Show notification if post's current accepted revision is not this
-		$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true) ?: $postID;
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true) ?: $postID;
 		$latestRevision = $this->getLatestPublishedRevision($postID);
 		if ($acceptedID && $latestRevision && $acceptedID != $latestRevision->ID) {
 			$this->acceptedID = $acceptedID;
@@ -210,7 +206,7 @@ class Plugin {
 		}
 	}
 
-	public function addPendingChangesButton() {
+	public function addPendingRevisionsButton() {
 
 		// Show button to explicitly save as pending changes
 		$screen = get_current_screen();
@@ -221,8 +217,8 @@ class Plugin {
 		if (empty($post) || $post->post_status !== 'publish') { return; }
 		if (!current_user_can('accept_revisions', $post->ID)) { return; }
 
-		$html = '<div class="fpc-pending-changes-action">';
-		$html .= '<input type="submit" name="fpc-pending-changes" id="fpc-pending-changes-submit" value="Save pending" class="button fpc-pending-changes-action__button">';
+		$html = '<div class="fpr-pending-revisions-action">';
+		$html .= '<input type="submit" name="fpr-pending-revisions" id="fpr-pending-revisions-submit" value="Save pending" class="button fpr-pending-revisions-action__button">';
 		$html .= '</div>';
 		echo $html;
 	}
@@ -233,7 +229,7 @@ class Plugin {
 			// Replace Update button text
 			global $post;
 			if (empty($post) || $post->post_status !== 'publish') { return $translation; }
-			$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+			$editingMode = get_post_meta($post->ID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 			if ($editingMode !== self::EDITING_MODE_PENDING || current_user_can('accept_revisions', $post->ID)) { return $translation; }
 
 			return 'Suggest edit';
@@ -245,7 +241,7 @@ class Plugin {
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('accept_revisions', $postID)) { return; }
 
-		add_meta_box('fpc_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), null, 'side', 'high', array());
+		add_meta_box('fpr_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), null, 'side', 'high', array());
 	}
 
 	public function showEditingModeMetaBox() {
@@ -254,14 +250,14 @@ class Plugin {
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('accept_revisions', $postID)) { return; }
 
-		$editingMode = get_post_meta($postID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
-		echo '<p><label for="fpc-editing-mode" class="fpc-editing-mode__label">Editing Mode</label></p>';
-		echo '<select name="fpc-editing-mode" id="fpc-editing-mode" class="fpc-editing-mode__select">';
+		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		echo '<p><label for="fpr-editing-mode" class="fpr-editing-mode__label">Editing Mode</label></p>';
+		echo '<select name="fpr-editing-mode" id="fpr-editing-mode" class="fpr-editing-mode__select">';
 		echo '<option value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' selected="selected"' : '') . '>Open</option>';
 		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
 		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
 		echo '</select>';
-		echo '<p class="fpc-editing-mode__button"><button class="button">Change editing mode</button></p>';
+		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
 
 	// Add Pending Revisions column
@@ -274,7 +270,7 @@ class Plugin {
 	function getPendingColumnContent($column, $postID) {
 		if ($column === 'pending_revisions') {
 
-			$acceptedID = get_post_meta($postID, '_fpc_accepted_revision_id', true);
+			$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 			if (empty($acceptedID)) {
 				echo '—';
 				return;
@@ -307,7 +303,7 @@ class Plugin {
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
-		$acceptedID = get_post_meta($post->ID, '_fpc_accepted_revision_id', true) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
 		$revisionsData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
 			$revisionsData['current'] = true;
@@ -329,7 +325,7 @@ class Plugin {
 		}
 
 		// Data to pass to Post's Javascript
-		$editingMode = get_post_meta($post->ID, '_fpc_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = get_post_meta($post->ID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
@@ -340,11 +336,11 @@ class Plugin {
 
 	public function enqueueScripts($hook_suffix) {
 		if ($hook_suffix == 'post.php') {
-			wp_enqueue_style('fpc-pending-changes-styles', plugin_dir_url(__FILE__) . 'css/pending-changes.css');
-			wp_enqueue_script('fpc-pending-changes-post', plugin_dir_url(__FILE__) . 'js/pending-changes-post.js', array('jquery', 'revisions'));
-			wp_localize_script('fpc-pending-changes-post', 'fpcData', $this->preparePostForJS());
+			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
+			wp_enqueue_script('fpr-post', plugin_dir_url(__FILE__) . 'js/post.js', array('jquery', 'revisions'));
+			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hook_suffix == 'revision.php') {
-			wp_enqueue_script('fpc-pending-changes-revisions', plugin_dir_url(__FILE__) . 'js/pending-changes-revisions.js', array('jquery', 'revisions'));
+			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/evisions.js', array('jquery', 'revisions'));
 		}
 	}
 }
