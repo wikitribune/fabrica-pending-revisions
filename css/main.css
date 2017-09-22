@@ -52,6 +52,12 @@
 	}
 }
 
+/* Browse revisions */
+
+.revisions-tickmarks * {
+	z-index: 1;
+}
+
 /* Utilities */
 
 .fd-util-wait,

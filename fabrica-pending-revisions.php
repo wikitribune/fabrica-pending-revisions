@@ -340,6 +340,7 @@ class Plugin {
 			wp_enqueue_script('fpr-post', plugin_dir_url(__FILE__) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hook_suffix == 'revision.php') {
+			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
 			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/revisions.js', array('jquery', 'revisions'));
 		}
 	}
