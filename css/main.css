@@ -5,8 +5,19 @@
 	font-weight: 600;
 }
 
+.fpr-editing-mode__input-label {
+	display: block;
+	line-height: 22px;
+}
+
 .fpr-editing-mode__button {
 	text-align: right;
+}
+
+@media screen and (max-width: 783px) {
+	.fpr-editing-mode__input-label {
+		margin-bottom: 15px;
+	}
 }
 
 /* Pending revisions and Publish buttons */

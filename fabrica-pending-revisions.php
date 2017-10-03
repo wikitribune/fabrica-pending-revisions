@@ -181,7 +181,7 @@ class Plugin {
 			// Hide the update/publish button completly if JS is not available to disable it
 			echo '<style>#major-publishing-actions { display: none; }</style>';
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
 		}
 
 		return '';
@@ -252,11 +252,9 @@ class Plugin {
 
 		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
 		echo '<p><label for="fpr-editing-mode" class="fpr-editing-mode__label">Editing Mode</label></p>';
-		echo '<select name="fpr-editing-mode" id="fpr-editing-mode" class="fpr-editing-mode__select">';
-		echo '<option value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' selected="selected"' : '') . '>Open</option>';
-		echo '<option value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' selected="selected"' : '') . '>Edits require approval</option>';
-		echo '<option value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' selected="selected"' : '') . '>Locked</option>';
-		echo '</select>';
+		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' checked="checked"' : '') . '>Open</label>';
+		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' checked="checked"' : '') . '>Edits require approval</label>';
+		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' checked="checked"' : '') . '>Locked</label>';
 		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
 

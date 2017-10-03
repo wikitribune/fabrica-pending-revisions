@@ -16,10 +16,9 @@
 				action: 'fpr-editing-mode-save',
 				data: {
 					postID: fprData.post.ID,
-					editingMode: $('.fpr-editing-mode__select').val()
+					editingMode: $('input[name="fpr-editing-mode"]:checked').val()
 				}
 			};
-			console.log('~!~ data:', data, ', url: ', fprData.url);
 			$.ajax({
 				type: 'POST',
 				url: fprData.url,
