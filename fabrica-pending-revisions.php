@@ -78,6 +78,10 @@ class Plugin {
 		add_action('manage_posts_columns', array($this, 'addPendingColumn'));
 		add_action('manage_posts_custom_column', array($this, 'getPendingColumnContent'), 10, 2);
 
+		// Browse revisions
+		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
+		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
+
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
 		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
@@ -487,6 +491,20 @@ class Plugin {
 			$diffLink = admin_url('revision.php?from=' . $acceptedID . '&to=' . current($revisions)->ID);
 			echo '<a href="' . $diffLink . '">' . $revisionsCount . '</a>';
 		}
+	}
+
+	// Enable filters getting posts in Browse revisions page, so that Autosaves can be removed
+	public function enablePostsFilters($query) {
+		$screen = get_current_screen();
+		if ($screen->base != 'revision') { return; }
+		$query->set('suppress_filters', false);
+	}
+
+	// Remove Autosave revisions from Browse revisions page
+	public function filterBrowseRevisions($where) {
+		$screen = get_current_screen();
+		if ($screen->base != 'revision') { return; }
+		return $this->filterOutAutosaves($where);
 	}
 
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
