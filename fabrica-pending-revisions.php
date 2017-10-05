@@ -224,8 +224,8 @@ class Plugin {
 	// Add settings page to admin menu
 	function addSettingsPage() {
 		add_options_page(
-			'Settings Admin',
 			'Fabrica Pending Revisions',
+			'Pending Revisions',
 			'manage_options',
 			'fpr-settings',
 			array($this, 'renderSettingsPage')
@@ -235,7 +235,7 @@ class Plugin {
 	// Build and show settings page
 	function renderSettingsPage() {
 		?><div class="wrap">
-			<h1><?php _e('Fabrica Dashboard Settings', 'fabrica-pending-revisions'); ?></h1>
+			<h1><?php _e('Fabrica Pending Revisions Settings', 'fabrica-pending-revisions'); ?></h1>
 			<form method="post" action="options.php"><?php
 				settings_fields('fpr-settings');
 				do_settings_sections('fpr-settings');
@@ -281,9 +281,9 @@ class Plugin {
 	// Header for default settings section
 	function renderDefaultEditingModeHeader() {
 		echo '<p>' . __('Set mode to off to disable editing mode selection for posts of that post type. Editing mode will be set to "Open" for all posts of that type.', 'fabrica-pending-revisions') . '</p>';
-		echo '<div style="margin-left: 200px; font-size: 0">';
+		echo '<div style="margin-left: 220px; font-size: 14px">';
 		foreach (self::EDITING_MODES as $choice => $choiceName) {
-			echo '<span style="display: inline-block; width: 25%; font-weight: bold; font-size: 1rem;">' . __($choiceName, 'fabrica-pending-revisions') . '</span>';
+			echo '<span style="display: inline-block; width: 100px; font-size: 14px; font-weight: bold; text-align: center;">' . __($choiceName, 'fabrica-pending-revisions') . '</span>';
 		}
 		echo '</div>';
 	}
@@ -295,7 +295,7 @@ class Plugin {
 		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : 'off';
 		$editingModesChoices = array_keys(self::EDITING_MODES);
 		foreach ($editingModesChoices as $choice) {
-			echo '<span style="display: inline-block; width: 25%;"><input type="radio" id="' . $fieldName. '" name="fpr-settings[' . $fieldName . ']" ' . checked($savedValue, $choice, false) . ' value="' . $choice . '"></span>';
+			echo '<span style="display: inline-block; width: 100px; text-align: center;"><input type="radio" id="' . $fieldName. '" name="fpr-settings[' . $fieldName . ']" ' . checked($savedValue, $choice, false) . ' value="' . $choice . '"></span>';
 		}
 	}
 
