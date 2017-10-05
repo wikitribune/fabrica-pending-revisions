@@ -544,15 +544,15 @@ class Plugin {
 	}
 
 	// Set JSs and CSSs for Edit post and Browse revisions pages
-	public function enqueueScripts($hook_suffix) {
-		if ($hook_suffix == 'post.php') {
+	public function enqueueScripts($hookSuffix) {
+		if (in_array($hookSuffix, array('post.php', 'post-new.php'))) {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
 			wp_enqueue_script('fpr-post', plugin_dir_url(__FILE__) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
-		} else if ($hook_suffix == 'revision.php') {
+		} else if ($hookSuffix == 'revision.php') {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
 			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/revisions.js', array('jquery', 'revisions'));
-		} else if ($hook_suffix == 'settings_page_fpr-settings') {
+		} else if ($hookSuffix == 'settings_page_fpr-settings') {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/settings.css');
 		}
 	}
