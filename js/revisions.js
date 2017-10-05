@@ -16,7 +16,7 @@
 			borderLeft: '3px solid crimson'
 		});
 		var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
-		$pendingChangesTickmarks = $('<span class="fcr-current-revision-tickmark">');
+			$pendingChangesTickmarks = $('<span class="fcr-current-revision-tickmark">');
 		$pendingChangesTickmarks.css({
 			position: 'absolute',
 			height: '100%',
@@ -27,7 +27,8 @@
 			left: acceptedPosition + '%',
 			width: (100 - acceptedPosition) + '%',
 			border: 'none',
-			backgroundColor: 'lightgray',
+			background: 'repeating-linear-gradient(-60deg, #ddd, #ddd 9px, #f7f7f7 10px, #f7f7f7 17px)',
+			pointerEvents: 'none',
 		});
 		$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
 	});
