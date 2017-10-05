@@ -503,7 +503,7 @@ class Plugin {
 	// Remove Autosave revisions from Browse revisions page
 	public function filterBrowseRevisions($where) {
 		$screen = get_current_screen();
-		if ($screen->base != 'revision') { return; }
+		if ($screen->base != 'revision') { return $where; }
 		return $this->filterOutAutosaves($where);
 	}
 
