@@ -22,10 +22,22 @@ class Plugin {
 	const EDITING_MODE_PENDING = 'pending';
 	const EDITING_MODE_LOCKED = 'locked';
 	const EDITING_MODES = array(
-		self::EDITING_MODE_OFF => 'Off',
-		self::EDITING_MODE_OPEN => 'Open',
-		self::EDITING_MODE_PENDING => 'Edits require approval',
-		self::EDITING_MODE_LOCKED => 'Locked'
+		self::EDITING_MODE_OFF => array(
+			'name' => 'Off',
+			'description' => 'editing mode cannot be changed'
+		),
+		self::EDITING_MODE_OPEN => array(
+			'name' => 'Open',
+			'description' => 'all revisions accepted'
+		),
+		self::EDITING_MODE_PENDING => array(
+			'name' => 'Edits require approval',
+			'description' => 'suggestions must be approved'
+		),
+		self::EDITING_MODE_LOCKED => array(
+			'name' => 'Locked',
+			'description' => 'only authorised users can edit'
+		),
 	);
 
 	private $settings = array();
@@ -139,14 +151,15 @@ class Plugin {
 		$settings = $this->getSettings();
 		$settingName = get_post_type($postID) . '_default_editing_mode';
 		$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
-		if ($defaultEditingMode == self::EDITING_MODE_OFF || !in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
+		$editingModes = array_keys(self::EDITING_MODES);
+		if ($defaultEditingMode == self::EDITING_MODE_OFF || !in_array($defaultEditingMode, $editingModes)) {
 
 			// Default setting when post type's editing mode is not enabled
 			return self::EDITING_MODE_OPEN;
 		}
 
 		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true);
-		if (empty($editingMode) || !in_array($editingMode, array_keys(self::EDITING_MODES))) {
+		if (empty($editingMode) || !in_array($editingMode, $editingModes)) {
 
 			// Editing mode not set: return default setting for post type
 			$editingMode = $defaultEditingMode;
@@ -160,7 +173,6 @@ class Plugin {
 		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) { return; }
 		$postID = $_POST['data']['postID'];
 		$editingMode = $_POST['data']['editingMode'];
-		error_log('~%~ [savePermissions] ' . $editingMode);
 		update_post_meta($postID, '_fpr_editing_mode', $editingMode);
 		exit();
 	}
@@ -236,7 +248,7 @@ class Plugin {
 	function renderSettingsPage() {
 		?><div class="wrap">
 			<h1><?php _e('Fabrica Pending Revisions Settings', 'fabrica-pending-revisions'); ?></h1>
-			<form method="post" action="options.php"><?php
+			<form method="post" action="options.php" class="fpr-default-editing-mode-settings"><?php
 				settings_fields('fpr-settings');
 				do_settings_sections('fpr-settings');
 				submit_button();
@@ -280,10 +292,10 @@ class Plugin {
 
 	// Header for default settings section
 	function renderDefaultEditingModeHeader() {
-		echo '<p>' . __('Set mode to off to disable editing mode selection for posts of that post type. Editing mode will be set to "Open" for all posts of that type.', 'fabrica-pending-revisions') . '</p>';
-		echo '<div style="margin-left: 220px; font-size: 14px">';
-		foreach (self::EDITING_MODES as $choice => $choiceName) {
-			echo '<span style="display: inline-block; width: 100px; font-size: 14px; font-weight: bold; text-align: center;">' . __($choiceName, 'fabrica-pending-revisions') . '</span>';
+		echo '<p>' . __('Enable Pending Revisions for individual post types by choosing the default editing mode (authorised users can change the mode for individual posts). If left disabled the editing mode cannot be changed and all revisions are published automatically.', 'fabrica-pending-revisions') . '</p>';
+		echo '<div class="fpr-default-editing-mode-settings__header">';
+		foreach (self::EDITING_MODES as $choice => $choiceData) {
+			echo '<span class="fpr-default-editing-mode-settings__header-title"><div class="fpr-default-editing-mode-settings__choice-caption">' . __($choiceData['name'], 'fabrica-pending-revisions') . '</div><div class="fpr-default-editing-mode-settings__choice-description">' . __($choiceData['description'], 'fabrica-pending-revisions') . '</div></span>';
 		}
 		echo '</div>';
 	}
@@ -293,9 +305,20 @@ class Plugin {
 		$settings = $this->getSettings();
 		$fieldName = $data['postType']->name . '_default_editing_mode';
 		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : 'off';
-		$editingModesChoices = array_keys(self::EDITING_MODES);
-		foreach ($editingModesChoices as $choice) {
-			echo '<span style="display: inline-block; width: 100px; text-align: center;"><input type="radio" id="' . $fieldName. '" name="fpr-settings[' . $fieldName . ']" ' . checked($savedValue, $choice, false) . ' value="' . $choice . '"></span>';
+		$choiceDescriptions = array(
+			self::EDITING_MODE_OFF => 'editing mode cannot be changed',
+			self::EDITING_MODE_OPEN => 'all revisions accepted',
+			self::EDITING_MODE_PENDING => 'suggestions must be approved',
+			self::EDITING_MODE_LOCKED => 'only authorised users can edit'
+		);
+		foreach (self::EDITING_MODES as $choice => $choiceData) {
+			?><span class="fpr-default-editing-mode-settings__radio">
+				<input type="radio" id="<?php echo $fieldName . '-' . $choice; ?>" name="fpr-settings[<?php echo $fieldName; ?>]" <?php checked($savedValue, $choice); ?> value="<?php echo $choice; ?>">
+				<label for="<?php echo $fieldName . '-' . $choice; ?>" class="fpr-default-editing-mode-settings__radio-label">
+					<span class="fpr-default-editing-mode-settings__choice-caption"><?php _e($choiceData['name'], 'fabrica-pending-revisions'); ?></span>
+					<span class="fpr-default-editing-mode-settings__choice-description"><?php _e($choiceData['description'], 'fabrica-pending-revisions'); ?></span>
+				</label>
+			</span><?php
 		}
 	}
 
@@ -419,9 +442,9 @@ class Plugin {
 
 		$editingMode = $this->getEditingMode($postID);
 		echo '<p><label for="fpr-editing-mode" class="fpr-editing-mode__label">Editing Mode</label></p>';
-		foreach (self::EDITING_MODES as $choice => $choiceName) {
+		foreach (self::EDITING_MODES as $choice => $choiceData) {
 			if ($choice == self::EDITING_MODE_OFF) { continue; }
-			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceName, 'fabrica-pending-revisions') . '</label>';
+			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceData['name'], 'fabrica-pending-revisions') . '</label>';
 		}
 		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
@@ -511,6 +534,8 @@ class Plugin {
 		} else if ($hook_suffix == 'revision.php') {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
 			wp_enqueue_script('fpr-revisions', plugin_dir_url(__FILE__) . 'js/revisions.js', array('jquery', 'revisions'));
+		} else if ($hook_suffix == 'settings_page_fpr-settings') {
+			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/settings.css');
 		}
 	}
 }

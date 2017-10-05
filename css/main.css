@@ -71,7 +71,7 @@
 
 /* Utilities */
 
-.fd-util-wait,
-.fd-util-wait * {
+.fpr-util-wait,
+.fpr-util-wait * {
 	cursor: wait !important;
 }

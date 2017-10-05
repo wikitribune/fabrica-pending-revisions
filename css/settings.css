@@ -1,0 +1,55 @@
+/* Settings */
+
+.fpr-default-editing-mode-settings__choice-caption {
+	font-weight: bold;
+}
+
+.fpr-default-editing-mode-settings__choice-description {
+	font-style: italic;
+}
+
+@media screen and (max-width: 783px) {
+	.fpr-default-editing-mode-settings__header {
+		display: none;
+	}
+
+	.fpr-default-editing-mode-settings__radio {
+		display: block;
+		line-height: 2.5;
+	}
+}
+
+@media screen and (min-width: 783px) {
+	.fpr-default-editing-mode-settings .form-table th {
+		width: 100px;
+		text-align: right;
+	}
+
+	.fpr-default-editing-mode-settings__header {
+		display: flex;
+		margin-left: 120px;
+		font-size: 14px;
+	}
+
+	.fpr-default-editing-mode-settings__header-title {
+		display: inline-block;
+		width: 25%;
+		text-align: center;
+	}
+
+	.fpr-default-editing-mode-settings__radio {
+		display: inline-block;
+		width: 25%;
+		text-align: center;
+	}
+
+	.fpr-default-editing-mode-settings__radio-label {
+		display: none;
+	}
+}
+
+@media screen and (min-width: 1024px) {
+	.fpr-default-editing-mode-settings__header-title, .fpr-default-editing-mode-settings__radio {
+		width: 165px;
+	}
+}
