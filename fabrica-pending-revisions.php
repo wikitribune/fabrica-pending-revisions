@@ -17,14 +17,20 @@ if (!defined('WPINC')) { die(); }
 
 class Plugin {
 
-	const EDITING_MODE_OPEN = '';
+	const EDITING_MODE_OFF = 'off';
+	const EDITING_MODE_OPEN = 'open';
 	const EDITING_MODE_PENDING = 'pending';
 	const EDITING_MODE_LOCKED = 'locked';
+	const EDITING_MODES = array(
+		self::EDITING_MODE_OFF => 'Off',
+		self::EDITING_MODE_OPEN => 'Open',
+		self::EDITING_MODE_PENDING => 'Edits require approval',
+		self::EDITING_MODE_LOCKED => 'Locked'
+	);
 
-	public static $postTypesSupported = array('page', 'post', 'stories', 'projects');
+	private $settings = array();
 
 	public function __construct() {
-
 		if (!is_admin()) {
 			// [TODO] move frontend hooks and functions to their own class?
 			add_filter('the_content', array($this, 'filterAcceptedRevisionContent'), -1);
@@ -46,6 +52,10 @@ class Plugin {
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 
+		// Settings page
+		add_action('admin_menu', array($this, 'addSettingsPage'));
+		add_action('admin_init', array($this, 'registerSettings'), 20);
+
 		// Layout, buttons and metaboxes
 		add_action('admin_head', array($this, 'initPostEdit'));
 		add_action('post_submitbox_start', array($this, 'addPendingRevisionsButton'));
@@ -61,10 +71,33 @@ class Plugin {
 		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 	}
 
+	// Return plugin settings
+	public function getSettings() {
+		$this->settings = $this->settings ?: get_option('fpr-settings');
+		return $this->settings;
+	}
+
+	// Get post types for which plugin is enabled
+	public function getEnabledPostTypes() {
+		$settings = $this->getSettings();
+		$args = array('public' => true);
+		$postTypes = get_post_types($args);
+		$enabledPostTypes = array();
+		foreach ($postTypes as $postType) {
+			$settingName = $postType . '_default_editing_mode';
+			$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
+			if ($defaultEditingMode != self::EDITING_MODE_OFF && in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
+				$enabledPostTypes []= $postType;
+			}
+		}
+
+		return $enabledPostTypes;
+	}
+
 	// Replace content with post's accepted revision content
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
-		if (empty($postID) || !in_array(get_post_type($postID), self::$postTypesSupported)) { return $content; }
+		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $content; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
@@ -73,7 +106,7 @@ class Plugin {
 
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
-		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $excerpt; }
+		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $excerpt; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
@@ -83,7 +116,7 @@ class Plugin {
 	// Replace title with post's accepted revision title
 	public function filterAcceptedRevisionTitle($title, $post) {
 		$postID = is_object($post) ? $post->ID : $post;
-		if (!in_array(get_post_type($postID), self::$postTypesSupported)) { return $title; }
+		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $title; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
@@ -93,23 +126,48 @@ class Plugin {
 	// Replace custom fields' data with post's accepted revision custom fields' data
 	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
-		if (!in_array(get_post_type($postID), self::$postTypesSupported) || $field['name'] == 'accepted_revision_id') { return $value; }
+		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes()) || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
 		return get_field($field['name'], $acceptedID);
 	}
 
+	// Return the editing mode for a given post. If no editing mode is defined the post type's default editing mode is returned
+	public function getEditingMode($postID) {
+		// Get post type's default editing mode
+		$settings = $this->getSettings();
+		$settingName = get_post_type($postID) . '_default_editing_mode';
+		$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
+		if ($defaultEditingMode == self::EDITING_MODE_OFF || !in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
+
+			// Default setting when post type's editing mode is not enabled
+			return self::EDITING_MODE_OPEN;
+		}
+
+		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true);
+		if (empty($editingMode) || !in_array($editingMode, array_keys(self::EDITING_MODES))) {
+
+			// Editing mode not set: return default setting for post type
+			$editingMode = $defaultEditingMode;
+		}
+
+		return $editingMode;
+	}
+
+	// Called asynchronously to save post's editing mode permissions
 	public function savePermissions() {
 		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) { return; }
 		$postID = $_POST['data']['postID'];
 		$editingMode = $_POST['data']['editingMode'];
+		error_log('~%~ [savePermissions] ' . $editingMode);
 		update_post_meta($postID, '_fpr_editing_mode', $editingMode);
 		exit();
 	}
 
+	// Get user and posts permissions to determine whether or not post can be saved by current user
 	public function checkSaveAllowed($maybeEmpty, $postArray) {
-		$editingMode = get_post_meta($postArray['ID'], '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = $this->getEditingMode($postArray['ID']);
 
 		// Check if post is locked (editing not allowed)
 		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('accept_revisions', $postArray['ID'])) {
@@ -143,10 +201,11 @@ class Plugin {
 		return $where;
 	}
 
+	// Update accepted revision if allowed
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Check if user is authorised to publish changes
-		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postID)) { return; }
 
 		// Publish only if not set to save as pending revisions
@@ -162,17 +221,112 @@ class Plugin {
 		update_post_meta($postID, '_fpr_accepted_revision_id', $acceptedID);
 	}
 
+	// Add settings page to admin menu
+	function addSettingsPage() {
+		add_options_page(
+			'Settings Admin',
+			'Fabrica Pending Revisions',
+			'manage_options',
+			'fpr-settings',
+			array($this, 'renderSettingsPage')
+		);
+	}
+
+	// Build and show settings page
+	function renderSettingsPage() {
+		?><div class="wrap">
+			<h1><?php _e('Fabrica Dashboard Settings', 'fabrica-pending-revisions'); ?></h1>
+			<form method="post" action="options.php"><?php
+				settings_fields('fpr-settings');
+				do_settings_sections('fpr-settings');
+				submit_button();
+			?></form>
+		</div><?php
+	}
+
+	// Register custom settings
+	public function registerSettings() {
+
+		// Load settings to object property
+		$this->getSettings();
+
+		register_setting(
+			'fpr-settings', // Option group
+			'fpr-settings', // Option name
+			array($this, 'sanitizeSettings') // Sanitize
+		);
+
+		add_settings_section(
+			'default_editing_mode', // ID
+			__('Default editing mode', 'fabrica-pending-revisions'), // Title
+			array($this, 'renderDefaultEditingModeHeader'), // Callback
+			'fpr-settings' // Page
+		);
+
+		// Register setting for each post type
+		$args = array('public' => true);
+		$postTypes = get_post_types($args, 'objects');
+		foreach ($postTypes as $postType) {
+			add_settings_field(
+				$postType->name . '_default_editing_mode', // ID
+				__($postType->label, 'fabrica-pending-revisions'), // Title
+				array($this, 'renderDefaultEditingModeSetting'), // Callback
+				'fpr-settings', // Page
+				'default_editing_mode', // Section
+				array('postType' => $postType) // Callback arguments
+			);
+		}
+	}
+
+	// Header for default settings section
+	function renderDefaultEditingModeHeader() {
+		echo '<p>' . __('Set mode to off to disable editing mode selection for posts of that post type. Editing mode will be set to "Open" for all posts of that type.', 'fabrica-pending-revisions') . '</p>';
+		echo '<div style="margin-left: 200px; font-size: 0">';
+		foreach (self::EDITING_MODES as $choice => $choiceName) {
+			echo '<span style="display: inline-block; width: 25%; font-weight: bold; font-size: 1rem;">' . __($choiceName, 'fabrica-pending-revisions') . '</span>';
+		}
+		echo '</div>';
+	}
+
+	// Build and show default editing mode custom setting
+	function renderDefaultEditingModeSetting($data) {
+		$settings = $this->getSettings();
+		$fieldName = $data['postType']->name . '_default_editing_mode';
+		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : 'off';
+		$editingModesChoices = array_keys(self::EDITING_MODES);
+		foreach ($editingModesChoices as $choice) {
+			echo '<span style="display: inline-block; width: 25%;"><input type="radio" id="' . $fieldName. '" name="fpr-settings[' . $fieldName . ']" ' . checked($savedValue, $choice, false) . ' value="' . $choice . '"></span>';
+		}
+	}
+
+	// Sanitize saved fields
+	public function sanitizeSettings($input) {
+		$sanitizedInput = array();
+		$args = array('public' => true);
+		$postTypes = get_post_types($args);
+		$editingModesChoices = array_keys(self::EDITING_MODES);
+		foreach ($postTypes as $postType) {
+			$fieldName = $postType . '_default_editing_mode';
+			if (isset($input[$fieldName]) && in_array($input[$fieldName], $editingModesChoices)) {
+				$sanitizedInput[$fieldName] = $input[$fieldName];
+			}
+		}
+		return $sanitizedInput;
+	}
+
+	// Show notification to warn user that the current post revision is not the accepted one
 	function showRevisionNotTheAcceptedNotification() {
 		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
 		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
 		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).', 'fabrica-pending-revisions'), $diffLink) . '</p></div>';
 	}
 
+	// Initialise page according to post's editing mode
 	private function initEditingMode($postID) {
 		if (current_user_can('accept_revisions', $postID)) { return; }
 
 		// Show notifications depending on editing mode
-		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			$postType = get_post_type_object(get_post_type($postID));
 			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
@@ -187,9 +341,10 @@ class Plugin {
 		return '';
 	}
 
+	// Initialise page
 	public function initPostEdit() {
 		$screen = get_current_screen();
-		if (!in_array($screen->post_type, self::$postTypesSupported) || $screen->base != 'post') { return; }
+		if (!in_array($screen->post_type, $this->getEnabledPostTypes()) || $screen->base != 'post') { return; }
 		$postID = get_the_ID();
 		if (empty($postID)) { return; }
 
@@ -206,11 +361,12 @@ class Plugin {
 		}
 	}
 
+	// Add button for allowed users to be able to save a pending revision rather than "publish"
 	public function addPendingRevisionsButton() {
 
 		// Show button to explicitly save as pending changes
 		$screen = get_current_screen();
-		if (!in_array($screen->post_type, self::$postTypesSupported) || $screen->base != 'post') { return; }
+		if (!in_array($screen->post_type, $this->getEnabledPostTypes()) || $screen->base != 'post') { return; }
 
 		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
@@ -223,13 +379,14 @@ class Plugin {
 		echo $html;
 	}
 
+	// Change WP's default Update button text when appropriate
 	public function alterText($translation, $text) {
 		if ($text == 'Update') {
 
 			// Replace Update button text
 			global $post;
 			if (empty($post) || $post->post_status !== 'publish') { return $translation; }
-			$editingMode = get_post_meta($post->ID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+			$editingMode = $this->getEditingMode($post->ID);
 			if ($editingMode !== self::EDITING_MODE_PENDING || current_user_can('accept_revisions', $post->ID)) { return $translation; }
 
 			return 'Suggest edit';
@@ -237,24 +394,35 @@ class Plugin {
 		return $translation;
 	}
 
+	// Add metabox to change post's editing mode
 	public function addPermissionsMetaBox() {
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('accept_revisions', $postID)) { return; }
 
+		// Check if editing mode is enabled for post type
+		$settings = $this->getSettings();
+		$settingName = get_post_type($postID) . '_default_editing_mode';
+		$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
+		if ($defaultEditingMode == self::EDITING_MODE_OFF || !in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
+			return;
+		}
+
 		add_meta_box('fpr_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), null, 'side', 'high', array());
 	}
 
+	// Build and show metabox to change post's editing mode
 	public function showEditingModeMetaBox() {
 
 		// Dropdown to select post's editing mode
 		$postID = get_the_ID();
 		if (empty($postID) || !current_user_can('accept_revisions', $postID)) { return; }
 
-		$editingMode = get_post_meta($postID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = $this->getEditingMode($postID);
 		echo '<p><label for="fpr-editing-mode" class="fpr-editing-mode__label">Editing Mode</label></p>';
-		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value=""' . ($editingMode === self::EDITING_MODE_OPEN ? ' checked="checked"' : '') . '>Open</label>';
-		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . self::EDITING_MODE_PENDING . '"' . ($editingMode === self::EDITING_MODE_PENDING ? ' checked="checked"' : '') . '>Edits require approval</label>';
-		echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . self::EDITING_MODE_LOCKED . '"' . ($editingMode === self::EDITING_MODE_LOCKED ? ' checked="checked"' : '') . '>Locked</label>';
+		foreach (self::EDITING_MODES as $choice => $choiceName) {
+			if ($choice == self::EDITING_MODE_OFF) { continue; }
+			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceName, 'fabrica-pending-revisions') . '</label>';
+		}
 		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
 
@@ -298,6 +466,7 @@ class Plugin {
 		}
 	}
 
+	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
@@ -316,6 +485,7 @@ class Plugin {
 		return $revisionsData;
 	}
 
+	// Get data to send to Edit post page
 	public function preparePostForJS() {
 		global $post;
 		if (!$post) {
@@ -323,7 +493,7 @@ class Plugin {
 		}
 
 		// Data to pass to Post's Javascript
-		$editingMode = get_post_meta($post->ID, '_fpr_editing_mode', true) ?: self::EDITING_MODE_OPEN;
+		$editingMode = $this->getEditingMode($post->ID);
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
@@ -332,6 +502,7 @@ class Plugin {
 		);
 	}
 
+	// Set JSs and CSSs for Edit post and Browse revisions pages
 	public function enqueueScripts($hook_suffix) {
 		if ($hook_suffix == 'post.php') {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(__FILE__) . 'css/main.css');
