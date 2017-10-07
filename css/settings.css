@@ -20,14 +20,9 @@
 }
 
 @media screen and (min-width: 783px) {
-	.fpr-default-editing-mode-settings .form-table th {
-		width: 100px;
-		text-align: right;
-	}
-
 	.fpr-default-editing-mode-settings__header {
 		display: flex;
-		margin-left: 120px;
+		margin-left: 220px;
 		font-size: 14px;
 	}
 
@@ -50,6 +45,6 @@
 
 @media screen and (min-width: 1024px) {
 	.fpr-default-editing-mode-settings__header-title, .fpr-default-editing-mode-settings__radio {
-		width: 165px;
+		width: 145px;
 	}
 }
