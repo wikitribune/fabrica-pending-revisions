@@ -15,7 +15,11 @@ namespace Fabrica\PendingRevisions;
 
 if (!defined('WPINC')) { die(); }
 
-class Plugin {
+require_once('inc/singleton.php');
+
+class Plugin extends Singleton {
+
+	const DOMAIN = 'fabrica-pending-revisions';
 
 	const EDITING_MODE_OFF = 'off';
 	const EDITING_MODE_OPEN = 'open';
@@ -42,7 +46,7 @@ class Plugin {
 
 	private $settings = array();
 
-	public function __construct() {
+	public function init() {
 		if (!is_admin()) {
 			// [TODO] move frontend hooks and functions to their own class?
 			add_filter('the_content', array($this, 'filterAcceptedRevisionContent'), -1);
@@ -194,7 +198,7 @@ class Plugin {
 	}
 
 	// Returns the latest published revision, excluding autosaves
-	public function getNonAutosaveRevisions($postID, $extraArgs=array()) {
+	protected function getNonAutosaveRevisions($postID, $extraArgs=array()) {
 		$args = array_merge(array('suppress_filters' => false), $extraArgs);
 		add_filter('posts_where', array($this, 'filterOutAutosaves'), 10, 1);
 		$revisions = wp_get_post_revisions($postID, $args);
@@ -203,7 +207,7 @@ class Plugin {
 	}
 
 	// Returns all revisions that are not autosaves
-	public function getLatestPublishedRevision($postID, $extraArgs=array()) {
+	protected function getLatestPublishedRevision($postID, $extraArgs=array()) {
 		$args = array_merge(array('posts_per_page' => 1), $extraArgs);
 		$revisions = $this->getNonAutosaveRevisions($postID, $args);
 		if (count($revisions) == 0) { return false; }
@@ -238,7 +242,7 @@ class Plugin {
 	}
 
 	// Add settings page to admin menu
-	function addSettingsPage() {
+	public function addSettingsPage() {
 		add_options_page(
 			'Fabrica Pending Revisions',
 			'Pending Revisions',
@@ -249,9 +253,9 @@ class Plugin {
 	}
 
 	// Build and show settings page
-	function renderSettingsPage() {
+	public function renderSettingsPage() {
 		?><div class="wrap">
-			<h1><?php _e('Fabrica Pending Revisions Settings', 'fabrica-pending-revisions'); ?></h1>
+			<h1><?php _e('Fabrica Pending Revisions Settings', self::DOMAIN); ?></h1>
 			<form method="post" action="options.php" class="fpr-default-editing-mode-settings"><?php
 				settings_fields('fpr-settings');
 				do_settings_sections('fpr-settings');
@@ -274,7 +278,7 @@ class Plugin {
 
 		add_settings_section(
 			'default_editing_mode', // ID
-			__('Default editing mode', 'fabrica-pending-revisions'), // Title
+			__('Default editing mode', self::DOMAIN), // Title
 			array($this, 'renderDefaultEditingModeHeader'), // Callback
 			'fpr-settings' // Page
 		);
@@ -285,7 +289,7 @@ class Plugin {
 		foreach ($postTypes as $postType) {
 			add_settings_field(
 				$postType->name . '_default_editing_mode', // ID
-				__($postType->label, 'fabrica-pending-revisions'), // Title
+				__($postType->label, self::DOMAIN), // Title
 				array($this, 'renderDefaultEditingModeSetting'), // Callback
 				'fpr-settings', // Page
 				'default_editing_mode', // Section
@@ -295,32 +299,26 @@ class Plugin {
 	}
 
 	// Header for default settings section
-	function renderDefaultEditingModeHeader() {
-		echo '<p>' . __('Enable Pending Revisions for individual post types by choosing the default editing mode (authorised users can change the mode for individual posts). If left disabled the editing mode cannot be changed and all revisions are published automatically.', 'fabrica-pending-revisions') . '</p>';
+	public function renderDefaultEditingModeHeader() {
+		echo '<p>' . __('Enable Pending Revisions for individual post types by choosing the default editing mode (authorised users can change the mode for individual posts). If left disabled the editing mode cannot be changed and all revisions are published automatically.', self::DOMAIN) . '</p>';
 		echo '<div class="fpr-default-editing-mode-settings__header">';
 		foreach (self::EDITING_MODES as $choice => $choiceData) {
-			echo '<span class="fpr-default-editing-mode-settings__header-title"><div class="fpr-default-editing-mode-settings__choice-caption">' . __($choiceData['name'], 'fabrica-pending-revisions') . '</div><div class="fpr-default-editing-mode-settings__choice-description">' . __($choiceData['description'], 'fabrica-pending-revisions') . '</div></span>';
+			echo '<span class="fpr-default-editing-mode-settings__header-title"><div class="fpr-default-editing-mode-settings__choice-caption">' . __($choiceData['name'], self::DOMAIN) . '</div><div class="fpr-default-editing-mode-settings__choice-description">' . __($choiceData['description'], self::DOMAIN) . '</div></span>';
 		}
 		echo '</div>';
 	}
 
 	// Build and show default editing mode custom setting
-	function renderDefaultEditingModeSetting($data) {
+	public function renderDefaultEditingModeSetting($data) {
 		$settings = $this->getSettings();
 		$fieldName = $data['postType']->name . '_default_editing_mode';
 		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : 'off';
-		$choiceDescriptions = array(
-			self::EDITING_MODE_OFF => 'editing mode cannot be changed',
-			self::EDITING_MODE_OPEN => 'all revisions accepted',
-			self::EDITING_MODE_PENDING => 'suggestions must be approved',
-			self::EDITING_MODE_LOCKED => 'only authorised users can edit'
-		);
 		foreach (self::EDITING_MODES as $choice => $choiceData) {
 			?><span class="fpr-default-editing-mode-settings__radio">
 				<input type="radio" id="<?php echo $fieldName . '-' . $choice; ?>" name="fpr-settings[<?php echo $fieldName; ?>]" <?php checked($savedValue, $choice); ?> value="<?php echo $choice; ?>">
 				<label for="<?php echo $fieldName . '-' . $choice; ?>" class="fpr-default-editing-mode-settings__radio-label">
-					<span class="fpr-default-editing-mode-settings__choice-caption"><?php _e($choiceData['name'], 'fabrica-pending-revisions'); ?></span>
-					<span class="fpr-default-editing-mode-settings__choice-description"><?php _e($choiceData['description'], 'fabrica-pending-revisions'); ?></span>
+					<span class="fpr-default-editing-mode-settings__choice-caption"><?php _e($choiceData['name'], self::DOMAIN); ?></span>
+					<span class="fpr-default-editing-mode-settings__choice-description"><?php _e($choiceData['description'], self::DOMAIN); ?></span>
 				</label>
 			</span><?php
 		}
@@ -342,10 +340,10 @@ class Plugin {
 	}
 
 	// Show notification to warn user that the current post revision is not the accepted one
-	function showRevisionNotTheAcceptedNotification() {
+	public function showRevisionNotTheAcceptedNotification() {
 		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
 		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
-		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).', 'fabrica-pending-revisions'), $diffLink) . '</p></div>';
+		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).', self::DOMAIN), $diffLink) . '</p></div>';
 	}
 
 	// Initialise page according to post's editing mode
@@ -356,13 +354,13 @@ class Plugin {
 		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
 
 			// Hide the update/publish button completly if JS is not available to disable it
 			echo '<style>#major-publishing-actions { display: none; }</style>';
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', 'fabrica-pending-revisions'), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 		}
 
 		return '';
@@ -448,19 +446,19 @@ class Plugin {
 		echo '<p><label for="fpr-editing-mode" class="fpr-editing-mode__label">Editing Mode</label></p>';
 		foreach (self::EDITING_MODES as $choice => $choiceData) {
 			if ($choice == self::EDITING_MODE_OFF) { continue; }
-			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceData['name'], 'fabrica-pending-revisions') . '</label>';
+			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceData['name'], self::DOMAIN) . '</label>';
 		}
 		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
 	}
 
 	// Add Pending Revisions column
-	function addPendingColumn($columns) {
+	public function addPendingColumn($columns) {
 		$columns['pending_revisions'] = __('Pending Revisions');
 		return $columns;
 	}
 
 	// Filter for Pending Revisions column content
-	function getPendingColumnContent($column, $postID) {
+	public function getPendingColumnContent($column, $postID) {
 		if ($column === 'pending_revisions') {
 
 			$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
@@ -527,7 +525,7 @@ class Plugin {
 	}
 
 	// Get data to send to Edit post page
-	public function preparePostForJS() {
+	private function preparePostForJS() {
 		global $post;
 		if (!$post) {
 			return array();
@@ -558,4 +556,4 @@ class Plugin {
 	}
 }
 
-new Plugin();
+Plugin::instance()->init();
