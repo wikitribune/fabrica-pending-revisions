@@ -8,6 +8,11 @@
 	font-style: italic;
 }
 
+.fpr-notification-message-settings {
+	width: 100%;
+	max-width: 580px;
+}
+
 @media screen and (max-width: 783px) {
 	.fpr-default-editing-mode-settings__header {
 		display: none;

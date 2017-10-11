@@ -67,6 +67,7 @@ class Plugin extends Singleton {
 		// Saving hooks
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
+		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
 
 		// Settings page
 		add_action('admin_menu', array($this, 'addSettingsPage'));
@@ -94,6 +95,14 @@ class Plugin extends Singleton {
 	// Return plugin settings
 	public function getSettings() {
 		$this->settings = $this->settings ?: get_option('fpr-settings');
+
+		// Default settings
+		$this->settings['revision_submitted_pending_approval_notification_message'] = isset($this->settings['revision_submitted_pending_approval_notification_message']) ? $this->settings['revision_submitted_pending_approval_notification_message'] : 'Revision submitted and pending approval by an Editor and the community. <a href="%s">View the original article</a>';
+		$this->settings['revision_not_accepted_notification_message'] = isset($this->settings['revision_not_accepted_notification_message']) ? $this->settings['revision_not_accepted_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).';
+		$this->settings['revision_not_accepted_editors_notification_message'] = isset($this->settings['revision_not_accepted_editors_notification_message']) ? $this->settings['revision_not_accepted_editors_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. <a href="%s">Compare the published and pending versions</a>';
+		$this->settings['edits_require_approval_notification_message'] = isset($this->settings['edits_require_approval_notification_message']) ? $this->settings['edits_require_approval_notification_message'] : 'Changes to this %s require the approval of an editor before they will be made public.';
+		$this->settings['post_locked_notification_message'] = isset($this->settings['post_locked_notification_message']) ? $this->settings['post_locked_notification_message'] : 'This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.';
+
 		return $this->settings;
 	}
 
@@ -221,8 +230,18 @@ class Plugin extends Singleton {
 		return $where;
 	}
 
+	// Generates a transient ID from a post ID and user ID
+	private function generateTransientID($postID, $userID) {
+		if (!$postID || !$userID) { return false; }
+		return 'fpr_saved_pending_' . $postID . '_' . $userID;
+	}
+
 	// Update accepted revision if allowed
 	public function saveAcceptedRevision($postID, $post, $update) {
+
+		// Assume revision will be saved as pending approval
+		$transientID = $this->generateTransientID($postID, get_current_user_id());
+		set_transient($transientID, true, 15 * MINUTE_IN_SECONDS);
 
 		// Check if user is authorised to publish changes
 		$editingMode = $this->getEditingMode($postID);
@@ -239,6 +258,22 @@ class Plugin extends Singleton {
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
 		update_post_meta($postID, '_fpr_accepted_revision_id', $acceptedID);
+		set_transient($transientID, false, 15 * MINUTE_IN_SECONDS);
+	}
+
+	// Change notification message when post is updated if pending approval
+	public function changePostUpdatedMessages($messages) {
+		global $post;
+		if (empty($post)) { return; }
+		$transientID = $this->generateTransientID($post->ID, get_current_user_id());
+		if (!get_transient($transientID)) { return; }
+
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
+		$settings = $this->getSettings();
+		$messages[$post->post_type][1] = sprintf(__($settings['revision_submitted_pending_approval_notification_message'] ?: '', self::DOMAIN), admin_url('revision.php?revision=' . $acceptedID));
+		set_transient($transientID, false, 15 * MINUTE_IN_SECONDS);
+
+		return $messages;
 	}
 
 	// Add settings page to admin menu
@@ -283,7 +318,14 @@ class Plugin extends Singleton {
 			'fpr-settings' // Page
 		);
 
-		// Register setting for each post type
+		add_settings_section(
+			'notifications_messages', // ID
+			__('Notifications messages', self::DOMAIN), // Title
+			array($this, 'renderNotificationsMessagesHeader'), // Callback
+			'fpr-settings' // Page
+		);
+
+		// Register default editing mode setting for each post type
 		$args = array('public' => true);
 		$postTypes = get_post_types($args, 'objects');
 		foreach ($postTypes as $postType) {
@@ -296,6 +338,67 @@ class Plugin extends Singleton {
 				array('postType' => $postType) // Callback arguments
 			);
 		}
+
+		// Register notifications messages settings
+		add_settings_field(
+			'revision_submitted_pending_approval_notification_message', // ID
+			__('Revision submitted and pending approval', self::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'revision_submitted_pending_approval_notification_message',
+				'note' => __('Use <code>%s</code> for accepted revision URL.'),
+			) // Callback arguments
+		);
+
+		add_settings_field(
+			'revision_not_accepted_notification_message', // ID
+			__('Revision being edited not the accepted revision (contributors message)', self::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'revision_not_accepted_notification_message',
+				'note' => __('Use <code>%s</code> for accepted and pending revisions comparison URL.'),
+			) // Callback arguments
+		);
+
+		add_settings_field(
+			'revision_not_accepted_editors_notification_message', // ID
+			__('Revision being edited not the accepted revision (editors message)', self::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'revision_not_accepted_editors_notification_message',
+				'note' => __('Use <code>%s</code> for post type name.'),
+			) // Callback arguments
+		);
+
+		add_settings_field(
+			'edits_require_approval_notification_message', // ID
+			__('Post edits require approval', self::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'edits_require_approval_notification_message',
+				'note' => __('Use <code>%s</code> for post type name.'),
+			) // Callback arguments
+		);
+
+		add_settings_field(
+			'post_locked_notification_message', // ID
+			__('Post locked for changes', self::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'post_locked_notification_message',
+				'note' => __('Use <code>%s</code> for post type name.'),
+			) // Callback arguments
+		);
 	}
 
 	// Header for default settings section
@@ -306,6 +409,11 @@ class Plugin extends Singleton {
 			echo '<span class="fpr-default-editing-mode-settings__header-title"><div class="fpr-default-editing-mode-settings__choice-caption">' . __($choiceData['name'], self::DOMAIN) . '</div><div class="fpr-default-editing-mode-settings__choice-description">' . __($choiceData['description'], self::DOMAIN) . '</div></span>';
 		}
 		echo '</div>';
+	}
+
+	// Header for default settings section
+	public function renderNotificationsMessagesHeader() {
+		// Empty on purpose
 	}
 
 	// Build and show default editing mode custom setting
@@ -324,6 +432,17 @@ class Plugin extends Singleton {
 		}
 	}
 
+	// Build and show a notification message custom setting
+	public function renderNotificationMessageSetting($data) {
+		if (empty($data['notificationMessage'])) { return; }
+		$settings = $this->getSettings();
+		$savedValue = isset($settings[$data['notificationMessage']]) ? $settings[$data['notificationMessage']] : '';
+		echo '<textarea name="fpr-settings[' . $data['notificationMessage'] . ']" rows="6" class="fpr-notification-message-settings">' . $savedValue . '</textarea>';
+		if (!empty($data['note'])) {
+			echo '<div class="fpr-notification-message-settings__note"><em>' . $data['note'] . '</em></div>';
+		}
+	}
+
 	// Sanitize saved fields
 	public function sanitizeSettings($input) {
 		$sanitizedInput = array();
@@ -339,31 +458,50 @@ class Plugin extends Singleton {
 		return $sanitizedInput;
 	}
 
-	// Show notification to warn user that the current post revision is not the accepted one
-	public function showRevisionNotTheAcceptedNotification() {
-		if (empty($this->acceptedID) || empty($this->latestRevision)) { return; }
-		$diffLink = admin_url('revision.php?from=' . $this->acceptedID . '&to=' . $this->latestRevision->ID);
-		echo '<div class="notice notice-warning">' . $this->notificationMessages . '<p>' . sprintf(__('You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).', self::DOMAIN), $diffLink) . '</p></div>';
+	// Get notification message to warn user if the current post revision is not the accepted one
+	public function getRevisionNotAcceptedNotificationMessage($postID) {
+
+		// Check if revision is the accepted
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true) ?: $postID;
+		$latestRevision = $this->getLatestPublishedRevision($postID);
+		if (!$acceptedID || !$latestRevision || $acceptedID == $latestRevision->ID) { return ''; }
+
+		// Add message according to user capabilities
+		$settings = $this->getSettings();
+		$diffLink = admin_url('revision.php?from=' . $acceptedID . '&to=' . $latestRevision->ID);
+		$message = $settings['revision_not_accepted_notification_message'] ?: '';
+		if (current_user_can('accept_revisions', $postID)) {
+			$message = $settings['revision_not_accepted_editors_notification_message'] ?: '';
+		}
+
+		return '<p>' . $message . '</p>';
 	}
 
-	// Initialise page according to post's editing mode
-	private function initEditingMode($postID) {
+	// Get notification messages according to post's editing mode
+	private function getEditingModeNotificationMessage($postID) {
 		if (current_user_can('accept_revisions', $postID)) { return; }
 
 		// Show notifications depending on editing mode
+		$settings = $this->getSettings();
 		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__('Changes to this %s require the approval of an editor before they will be made public.', self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p>' . sprintf(__($settings['edits_require_approval_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
 
 			// Hide the update/publish button completly if JS is not available to disable it
 			echo '<style>#major-publishing-actions { display: none; }</style>';
 			$postType = get_post_type_object(get_post_type($postID));
-			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__('This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.', self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
+			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__($settings['post_locked_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 		}
 
 		return '';
+	}
+
+	// Show collected notification messages
+	public function showNotificationMessages() {
+		if (empty($this->notificationMessages)) { return; }
+		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
 
 	// Initialise page
@@ -373,16 +511,12 @@ class Plugin extends Singleton {
 		$postID = get_the_ID();
 		if (empty($postID)) { return; }
 
-		// Get editing mode notification messages
-		$this->notificationMessages = $this->initEditingMode($postID);
+		// Get and show notification messages
+		$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
+		$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
 
-		// Show notification if post's current accepted revision is not this
-		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true) ?: $postID;
-		$latestRevision = $this->getLatestPublishedRevision($postID);
-		if ($acceptedID && $latestRevision && $acceptedID != $latestRevision->ID) {
-			$this->acceptedID = $acceptedID;
-			$this->latestRevision = $latestRevision;
-			add_action('admin_notices', array($this, 'showRevisionNotTheAcceptedNotification'));
+		if (!empty($this->notificationMessages)) {
+			add_action('admin_notices', array($this, 'showNotificationMessages'));
 		}
 	}
 
