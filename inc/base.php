@@ -35,6 +35,8 @@ class Base extends Singleton {
 	);
 
 	public function init() {
+		if (!is_admin()) { return; }
+		
 		add_action('wp_ajax_fpr-editing-mode-save', array($this, 'savePermissions'));
 
 		// Exit now if AJAX request, to hook admin-only requests after

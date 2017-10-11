@@ -5,6 +5,7 @@ namespace Fabrica\PendingRevisions;
 if (!defined('WPINC')) { die(); }
 
 require_once('singleton.php');
+require_once('base.php');
 
 class Front extends Singleton {
 	public function init() {
@@ -19,7 +20,7 @@ class Front extends Singleton {
 	// Replace content with post's accepted revision content
 	public function filterAcceptedRevisionContent($content) {
 		$postID = get_the_ID();
-		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $content; }
+		if (empty($postID) || !in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $content; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $content; }
 
@@ -28,7 +29,7 @@ class Front extends Singleton {
 
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
-		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $excerpt; }
+		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $excerpt; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
 
@@ -38,7 +39,7 @@ class Front extends Singleton {
 	// Replace title with post's accepted revision title
 	public function filterAcceptedRevisionTitle($title, $post) {
 		$postID = is_object($post) ? $post->ID : $post;
-		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return $title; }
+		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $title; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $title; }
 
@@ -48,7 +49,7 @@ class Front extends Singleton {
 	// Replace custom fields' data with post's accepted revision custom fields' data
 	public function filterAcceptedRevisionField($value, $postID, $field) {
 		if (!function_exists('get_field')) { return $value; }
-		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes()) || $field['name'] == 'accepted_revision_id') { return $value; }
+		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes()) || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $value; }
 
