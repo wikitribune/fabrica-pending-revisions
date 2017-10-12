@@ -1,11 +1,23 @@
 (function($) {
 	$(function() {
+
 		// Get accepted revision index in revisions data array
 		var revisionData = _wpRevisionsSettings.revisionData,
 			acceptedIndex = revisionData.length - 1;
 		for (var i = acceptedIndex; i >= 0; i--) {
 			revision = revisionData[i];
 			if (revision.current) {
+				if (revision.pending) {
+
+					// Sometimes the current property is incorrectly reset in data received in JS
+					revision.current = false;
+					var revisionsCollection = wp.revisions.view.frame.model.revisions,
+						revisionModel = revisionsCollection.models[revisionsCollection.length - 1];
+					if (revisionModel) {
+						revisionModel.attributes.current = false;
+					}
+					continue;
+				}
 				acceptedIndex = i;
 				break;
 			}

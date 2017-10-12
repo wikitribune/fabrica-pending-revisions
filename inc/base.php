@@ -248,7 +248,7 @@ class Base extends Singleton {
 	// Initialise page
 	public function initPostEdit() {
 		$postID = get_the_ID();
-		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
+		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes()) || get_current_screen()->base != 'post') { return; }
 
 		// Get and show notification messages
 		$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
