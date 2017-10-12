@@ -48,7 +48,7 @@ class Base extends Singleton {
 		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
 
 		// Layout, buttons and metaboxes
-		add_action('load-post.php', array($this, 'initPostEdit'));
+		add_action('admin_head', array($this, 'initPostEdit'));
 		add_action('post_submitbox_start', array($this, 'addPendingRevisionsButton'));
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
@@ -246,7 +246,7 @@ class Base extends Singleton {
 
 	// Initialise page
 	public function initPostEdit() {
-		$postID = $_GET['post'];
+		$postID = get_the_ID();
 		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
 		// Get and show notification messages
@@ -361,14 +361,14 @@ class Base extends Singleton {
 	// Enable filters getting posts in Browse revisions page, so that Autosaves can be removed
 	public function enablePostsFilters($query) {
 		$screen = get_current_screen();
-		if ($screen->base != 'revision') { return; }
+		if (!$screen || $screen->base != 'revision') { return; }
 		$query->set('suppress_filters', false);
 	}
 
 	// Remove Autosave revisions from Browse revisions page
 	public function filterBrowseRevisions($where) {
 		$screen = get_current_screen();
-		if ($screen->base != 'revision') { return $where; }
+		if (!$screen || $screen->base != 'revision') { return $where; }
 		return $this->filterOutAutosaves($where);
 	}
 
