@@ -18,12 +18,12 @@ if (!defined('WPINC')) { die(); }
 require_once('inc/singleton.php');
 
 class Plugin extends Singleton {
-	public $mainFile = __FILE__;
+	const MAIN_FILE = __FILE__;
 
 	public function init() {
 		if (!is_admin()) { return; }
 
-		register_activation_hook($this->mainFile, array($this, 'activate'));
+		register_activation_hook(self::MAIN_FILE, array($this, 'activate'));
 	}
 
 	// Create `accept_revisions` capability and add to Admin role

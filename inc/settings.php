@@ -173,7 +173,7 @@ class Settings extends Singleton {
 	public function renderDefaultEditingModeSetting($data) {
 		$settings = $this->getSettings();
 		$fieldName = $data['postType']->name . '_default_editing_mode';
-		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : 'off';
+		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : '';
 		foreach (Base::EDITING_MODES as $choice => $choiceData) {
 			?><span class="fpr-default-editing-mode-settings__radio">
 				<input type="radio" id="<?php echo $fieldName . '-' . $choice; ?>" name="fpr-settings[<?php echo $fieldName; ?>]" <?php checked($savedValue, $choice); ?> value="<?php echo $choice; ?>">
@@ -204,7 +204,7 @@ class Settings extends Singleton {
 		$editingModesChoices = array_keys(Base::EDITING_MODES);
 		foreach ($postTypes as $postType) {
 			$fieldName = $postType . '_default_editing_mode';
-			if (isset($input[$fieldName]) && in_array($input[$fieldName], $editingModesChoices)) {
+			if (isset($input[$fieldName]) && $input[$fieldName] != Base::EDITING_MODE_OFF && in_array($input[$fieldName], $editingModesChoices)) {
 				$sanitizedInput[$fieldName] = $input[$fieldName];
 			}
 		}

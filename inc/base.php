@@ -11,7 +11,7 @@ class Base extends Singleton {
 
 	const DOMAIN = 'fabrica-pending-revisions';
 
-	const EDITING_MODE_OFF = 'off';
+	const EDITING_MODE_OFF = '';
 	const EDITING_MODE_OPEN = 'open';
 	const EDITING_MODE_PENDING = 'pending';
 	const EDITING_MODE_LOCKED = 'locked';
@@ -48,7 +48,7 @@ class Base extends Singleton {
 		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
 
 		// Layout, buttons and metaboxes
-		add_action('admin_head', array($this, 'initPostEdit'));
+		add_action('load-post.php', array($this, 'initPostEdit'));
 		add_action('post_submitbox_start', array($this, 'addPendingRevisionsButton'));
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
@@ -246,10 +246,8 @@ class Base extends Singleton {
 
 	// Initialise page
 	public function initPostEdit() {
-		$screen = get_current_screen();
-		if (!in_array($screen->post_type, $this->getEnabledPostTypes()) || $screen->base != 'post') { return; }
-		$postID = get_the_ID();
-		if (empty($postID)) { return; }
+		$postID = $_GET['post'];
+		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
 		// Get and show notification messages
 		$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
@@ -265,7 +263,7 @@ class Base extends Singleton {
 
 		// Show button to explicitly save as pending changes
 		$screen = get_current_screen();
-		if (!in_array($screen->post_type, $this->getEnabledPostTypes()) || $screen->base != 'post') { return; }
+		if (!in_array($screen->post_type, $this->getEnabledPostTypes())) { return; }
 
 		// Check if post is published and unlocked or user has publishing permissions
 		global $post;
@@ -299,12 +297,7 @@ class Base extends Singleton {
 		if (empty($postID) || !current_user_can('accept_revisions', $postID)) { return; }
 
 		// Check if editing mode is enabled for post type
-		$settings = Settings::instance()->getSettings();
-		$settingName = get_post_type($postID) . '_default_editing_mode';
-		$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
-		if ($defaultEditingMode == self::EDITING_MODE_OFF || !in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
-			return;
-		}
+		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
 		add_meta_box('fpr_editing_mode_box', 'Permissions', array($this, 'showEditingModeMetaBox'), null, 'side', 'high', array());
 	}
@@ -418,14 +411,14 @@ class Base extends Singleton {
 	// Set JSs and CSSs for Edit post and Browse revisions pages
 	public function enqueueScripts($hookSuffix) {
 		if (in_array($hookSuffix, array('post.php', 'post-new.php'))) {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/main.css');
-			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::instance()->mainFile) . 'js/post.js', array('jquery', 'revisions'));
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/main.css');
+			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::MAIN_FILE) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hookSuffix == 'revision.php') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/main.css');
-			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::instance()->mainFile) . 'js/revisions.js', array('jquery', 'revisions'));
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/main.css');
+			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::MAIN_FILE) . 'js/revisions.js', array('jquery', 'revisions'));
 		} else if ($hookSuffix == 'settings_page_fpr-settings') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/settings.css');
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/settings.css');
 		}
 	}
 }
