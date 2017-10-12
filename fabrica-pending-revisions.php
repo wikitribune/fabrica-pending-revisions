@@ -15,9 +15,31 @@ namespace Fabrica\PendingRevisions;
 
 if (!defined('WPINC')) { die(); }
 
-class Plugin {
-	public static $mainFile = __FILE__;
+require_once('inc/singleton.php');
+
+class Plugin extends Singleton {
+	public $mainFile = __FILE__;
+
+	public function init() {
+		if (!is_admin()) { return; }
+
+		register_activation_hook($this->mainFile, array($this, 'activate'));
+	}
+
+	// Create `accept_revisions` capability and add to Admin role
+	public function activate() {
+		if (!current_user_can('activate_plugins')) { return; }
+		$plugin = isset($_REQUEST['plugin']) ? $_REQUEST['plugin'] : '';
+		check_admin_referer('activate-plugin_' . $plugin);
+
+		// Check if Admin already has capability and if not add it
+		$role = get_role('administrator');
+		if (!$role || isset($role->capabilities['accept_revisions'])) { return; }
+		$role->add_cap('accept_revisions');
+	}
 }
+
+Plugin::instance()->init();
 
 if (is_admin()) {
 	require_once('inc/base.php');

@@ -36,7 +36,7 @@ class Base extends Singleton {
 
 	public function init() {
 		if (!is_admin()) { return; }
-		
+
 		add_action('wp_ajax_fpr-editing-mode-save', array($this, 'savePermissions'));
 
 		// Exit now if AJAX request, to hook admin-only requests after
@@ -418,14 +418,14 @@ class Base extends Singleton {
 	// Set JSs and CSSs for Edit post and Browse revisions pages
 	public function enqueueScripts($hookSuffix) {
 		if (in_array($hookSuffix, array('post.php', 'post-new.php'))) {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::$mainFile) . 'css/main.css');
-			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::$mainFile) . 'js/post.js', array('jquery', 'revisions'));
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/main.css');
+			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::instance()->mainFile) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hookSuffix == 'revision.php') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::$mainFile) . 'css/main.css');
-			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::$mainFile) . 'js/revisions.js', array('jquery', 'revisions'));
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/main.css');
+			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::instance()->mainFile) . 'js/revisions.js', array('jquery', 'revisions'));
 		} else if ($hookSuffix == 'settings_page_fpr-settings') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::$mainFile) . 'css/settings.css');
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::instance()->mainFile) . 'css/settings.css');
 		}
 	}
 }
