@@ -10,6 +10,7 @@
 				break;
 			}
 		}
+		if (acceptedIndex >= revisionData.length - 1) { return; }
 
 		// Mark the accepted revision visually
 		$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({

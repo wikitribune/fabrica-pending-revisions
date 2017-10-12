@@ -60,6 +60,7 @@ class Base extends Singleton {
 		// Browse revisions
 		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
+		add_filter('load-revision.php', array($this, 'redirectAutosaveBrowse'));
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
@@ -127,7 +128,7 @@ class Base extends Singleton {
 		return $maybeEmpty;
 	}
 
-	// Returns the latest published revision, excluding autosaves
+	// Returns all revisions that are not autosaves
 	protected function getNonAutosaveRevisions($postID, $extraArgs=array()) {
 		$args = array_merge(array('suppress_filters' => false), $extraArgs);
 		add_filter('posts_where', array($this, 'filterOutAutosaves'), 10, 1);
@@ -136,8 +137,8 @@ class Base extends Singleton {
 		return $revisions;
 	}
 
-	// Returns all revisions that are not autosaves
-	protected function getLatestPublishedRevision($postID, $extraArgs=array()) {
+	// Returns the latest revision, excluding autosaves
+	protected function getLatestRevision($postID, $extraArgs=array()) {
 		$args = array_merge(array('posts_per_page' => 1), $extraArgs);
 		$revisions = $this->getNonAutosaveRevisions($postID, $args);
 		if (count($revisions) == 0) { return false; }
@@ -173,7 +174,7 @@ class Base extends Singleton {
 
 		// Get accepted revision
 		$args = array('post_author' => get_current_user_id());
-		$revision = $this->getLatestPublishedRevision($postID, $args);
+		$revision = $this->getLatestRevision($postID, $args);
 		if (!$revision) { return; } // No accepted revision
 
 		// Set pointer to accepted revision
@@ -203,7 +204,7 @@ class Base extends Singleton {
 
 		// Check if revision is the accepted
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true) ?: $postID;
-		$latestRevision = $this->getLatestPublishedRevision($postID);
+		$latestRevision = $this->getLatestRevision($postID);
 		if (!$acceptedID || !$latestRevision || $acceptedID == $latestRevision->ID) { return ''; }
 
 		// Add message according to user capabilities
@@ -214,7 +215,7 @@ class Base extends Singleton {
 			$message = $settings['revision_not_accepted_editors_notification_message'] ?: '';
 		}
 
-		return '<p>' . $message . '</p>';
+		return '<p>' . sprintf($message, $diffLink) . '</p>';
 	}
 
 	// Get notification messages according to post's editing mode
@@ -370,6 +371,21 @@ class Base extends Singleton {
 		$screen = get_current_screen();
 		if (!$screen || $screen->base != 'revision') { return $where; }
 		return $this->filterOutAutosaves($where);
+	}
+
+	// Check if revision on browse revisions page is an autosave and, if so, redirect to latest non-autosave revision
+	public function redirectAutosaveBrowse() {
+		if (empty($_GET['revision'])) { return; }
+
+		// Check if revision is an autosave
+		$postID = wp_is_post_autosave($_GET['revision']);
+		if (!$postID) { return; }
+
+		// Generate URL with latest non-autosave revision and redirect
+		$query = $_GET;
+		$query['revision'] = $this->getLatestRevision($postID)->ID;
+		wp_redirect($_SERVER['PHP_SELF'] . '?' . http_build_query($query));
+		exit();
 	}
 
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
