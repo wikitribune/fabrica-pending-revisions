@@ -207,7 +207,7 @@ class Base extends Singleton {
 	public function getRevisionNotAcceptedNotificationMessage($postID) {
 
 		// Check if revision is the accepted
-		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true) ?: $postID;
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		$latestRevision = $this->getLatestRevision($postID);
 		if (!$acceptedID || !$latestRevision || $acceptedID == $latestRevision->ID) { return ''; }
 
@@ -407,7 +407,7 @@ class Base extends Singleton {
 	public function prepareRevisionForJS($revisionsData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
-		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $this->getLatestRevision($post->ID)->ID;
 		$revisionsData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
 			$revisionsData['current'] = true;
