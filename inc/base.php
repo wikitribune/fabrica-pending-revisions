@@ -157,7 +157,7 @@ class Base extends Singleton {
 	}
 
 	// Generates a transient ID from a post ID and user ID
-	private function generateTransientID($postID, $userID) {
+	private function generateSavedPendingTransientID($postID, $userID) {
 		if (!$postID || !$userID) { return false; }
 		return 'fpr_saved_pending_' . $postID . '_' . $userID;
 	}
@@ -166,7 +166,7 @@ class Base extends Singleton {
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		// Assume revision will be saved as pending approval
-		$transientID = $this->generateTransientID($postID, get_current_user_id());
+		$transientID = $this->generateSavedPendingTransientID($postID, get_current_user_id());
 		set_transient($transientID, true, 15 * MINUTE_IN_SECONDS);
 
 		// Check if user is authorised to publish changes
@@ -191,7 +191,7 @@ class Base extends Singleton {
 	public function changePostUpdatedMessages($messages) {
 		global $post;
 		if (empty($post)) { return; }
-		$transientID = $this->generateTransientID($post->ID, get_current_user_id());
+		$transientID = $this->generateSavedPendingTransientID($post->ID, get_current_user_id());
 		if (!get_transient($transientID)) { return; }
 
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
@@ -245,6 +245,9 @@ class Base extends Singleton {
 
 	// Show collected notification messages
 	public function showNotificationMessages() {
+
+		// Don't show plugin notifications if there's a saved notification from WP
+		if ($_GET['message']) { return; }
 		if (empty($this->notificationMessages)) { return; }
 		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
