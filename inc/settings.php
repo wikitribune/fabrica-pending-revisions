@@ -82,6 +82,7 @@ class Settings extends Singleton {
 		$args = array('public' => true);
 		$postTypes = get_post_types($args, 'objects');
 		foreach ($postTypes as $postType) {
+			if ($postType->name == 'attachment') { continue; }
 			add_settings_field(
 				$postType->name . '_default_editing_mode', // ID
 				__($postType->label, Base::DOMAIN), // Title
@@ -203,6 +204,7 @@ class Settings extends Singleton {
 		$postTypes = get_post_types($args);
 		$editingModesChoices = array_keys(Base::EDITING_MODES);
 		foreach ($postTypes as $postType) {
+			if ($postType == 'attachment') { continue; }
 			$fieldName = $postType . '_default_editing_mode';
 			if (isset($input[$fieldName]) && $input[$fieldName] != Base::EDITING_MODE_OFF && in_array($input[$fieldName], $editingModesChoices)) {
 				$sanitizedInput[$fieldName] = $input[$fieldName];

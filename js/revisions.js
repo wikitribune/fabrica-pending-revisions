@@ -9,7 +9,7 @@
 			if (revision.current) {
 				if (revision.pending) {
 
-					// Sometimes the current property is incorrectly reset in data received in JS
+					// When the last revision is an autosave WP sets the current property in the last non-autosave revision in the data sent to JS (after the `wp_prepare_revision_for_js` hook where we set the correct current revision)
 					revision.current = false;
 					var revisionsCollection = wp.revisions.view.frame.model.revisions,
 						revisionModel = revisionsCollection.models[revisionsCollection.length - 1];
