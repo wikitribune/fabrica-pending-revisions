@@ -53,6 +53,9 @@ class Base extends Singleton {
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
 
+		// Disable locked posts
+		add_action('user_has_cap', array($this, 'disableLockedPosts'), 10, 3);
+
 		// Post list columns
 		add_action('manage_posts_columns', array($this, 'addPendingColumn'));
 		add_action('manage_posts_custom_column', array($this, 'getPendingColumnContent'), 10, 2);
@@ -60,7 +63,7 @@ class Base extends Singleton {
 		// Browse revisions
 		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
-		add_filter('load-revision.php', array($this, 'redirectAutosaveBrowse'));
+		add_action('load-revision.php', array($this, 'redirectAutosaveBrowse'));
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
@@ -86,6 +89,7 @@ class Base extends Singleton {
 
 	// Return the editing mode for a given post. If no editing mode is defined the post type's default editing mode is returned
 	public function getEditingMode($postID) {
+
 		// Get post type's default editing mode
 		$settings = Settings::instance()->getSettings();
 		$settingName = get_post_type($postID) . '_default_editing_mode';
@@ -317,6 +321,17 @@ class Base extends Singleton {
 			echo '<label class="fpr-editing-mode__input-label"><input type="radio" name="fpr-editing-mode" value="' . $choice . '" ' . checked($editingMode, $choice, false) . '>' . __($choiceData['name'], self::DOMAIN) . '</label>';
 		}
 		echo '<p class="fpr-editing-mode__button"><button class="button">Change editing mode</button></p>';
+	}
+
+	// Change get posts query to exclude locked posts
+	public function disableLockedPosts($allcaps, $cap, $args) {
+		if (!in_array($args[0], array('edit_post')) || empty($args[2])) { return $allcaps; }
+		if (isset($allcaps['accept_revisions']) && $allcaps['accept_revisions']) { return $allcaps; }
+
+		$editingMode = $this->getEditingMode($args[2]);
+		if ($editingMode != self::EDITING_MODE_LOCKED) { return $allcaps; }
+
+		return false;
 	}
 
 	// Add Pending Revisions column
