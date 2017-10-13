@@ -26,7 +26,7 @@
 
 		// Mark the accepted revision visually
 		$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
-			borderLeft: '3px solid crimson'
+			borderLeft: '3px solid #46b450'
 		});
 		var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
 			$pendingChangesTickmarks = $('<span class="fcr-current-revision-tickmark">');

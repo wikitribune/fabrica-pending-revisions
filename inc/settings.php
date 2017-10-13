@@ -175,6 +175,7 @@ class Settings extends Singleton {
 		$settings = $this->getSettings();
 		$fieldName = $data['postType']->name . '_default_editing_mode';
 		$savedValue = isset($settings[$fieldName]) ? $settings[$fieldName] : '';
+		$savedValue = in_array($savedValue, array_keys(Base::EDITING_MODES)) ? $savedValue : '';
 		foreach (Base::EDITING_MODES as $choice => $choiceData) {
 			?><span class="fpr-default-editing-mode-settings__radio">
 				<input type="radio" id="<?php echo $fieldName . '-' . $choice; ?>" name="fpr-settings[<?php echo $fieldName; ?>]" <?php checked($savedValue, $choice); ?> value="<?php echo $choice; ?>">
