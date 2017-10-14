@@ -247,7 +247,7 @@ class Base extends Singleton {
 	public function showNotificationMessages() {
 
 		// Don't show plugin notifications if there's a saved notification from WP
-		if ($_GET['message']) { return; }
+		if (!empty($_GET['message'])) { return; }
 		if (empty($this->notificationMessages)) { return; }
 		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
