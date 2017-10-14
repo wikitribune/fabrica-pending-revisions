@@ -102,7 +102,7 @@ class Settings extends Singleton {
 			'notifications_messages', // Section
 			array(
 				'notificationMessage' => 'revision_submitted_pending_approval_notification_message',
-				'note' => __('Use <code>%s</code> for accepted revision URL.'),
+				'note' => __('Use <code>%s</code> for post (accepted revision) permalink.'),
 			) // Callback arguments
 		);
 
@@ -150,7 +150,7 @@ class Settings extends Singleton {
 			'notifications_messages', // Section
 			array(
 				'notificationMessage' => 'post_locked_notification_message',
-				'note' => __('Use <code>%1$s</code> for post type name and <code>%2$s</code> for the post permalink.'),
+				'note' => __('Use <code>%1$s</code> for post type name and <code>%2$s</code> for post permalink.'),
 			) // Callback arguments
 		);
 	}

@@ -198,7 +198,7 @@ class Base extends Singleton {
 
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
 		$settings = Settings::instance()->getSettings();
-		$messages[$post->post_type][1] = sprintf(__($settings['revision_submitted_pending_approval_notification_message'] ?: '', self::DOMAIN), admin_url('revision.php?revision=' . $acceptedID));
+		$messages[$post->post_type][1] = sprintf(__($settings['revision_submitted_pending_approval_notification_message'] ?: '', self::DOMAIN), get_permalink($post));
 		$messages[$post->post_type][4] = $messages[$post->post_type][1];
 		delete_transient($transientID);
 
