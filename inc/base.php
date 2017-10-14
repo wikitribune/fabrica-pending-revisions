@@ -165,12 +165,14 @@ class Base extends Singleton {
 	// Update accepted revision if allowed
 	public function saveAcceptedRevision($postID, $post, $update) {
 
+		$editingMode = $this->getEditingMode($postID);
+		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
+
 		// Assume revision will be saved as pending approval
 		$transientID = $this->generateSavedPendingTransientID($postID, get_current_user_id());
 		set_transient($transientID, true, 15 * MINUTE_IN_SECONDS);
 
 		// Check if user is authorised to publish changes
-		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postID)) { return; }
 
 		// Publish only if not set to save as pending revisions
@@ -286,7 +288,18 @@ class Base extends Singleton {
 
 	// Change WP's default Update button text when appropriate
 	public function alterText($translation, $text) {
-		if ($text == 'Update') {
+		if ($text == 'Sorry, you are not allowed to edit this item.') {
+
+			// Replace not allowed notice for locked posts
+			global $post;
+			if (empty($post)) { return $translation; }
+			$editingMode = $this->getEditingMode($post->ID);
+			if ($editingMode !== self::EDITING_MODE_LOCKED) { return $translation; }
+
+			$settings = Settings::instance()->getSettings();
+			$postType = get_post_type_object($post->post_type);
+			return sprintf(__($settings['post_locked_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name), get_permalink($post));
+		} else if ($text == 'Update') {
 
 			// Replace Update button text
 			global $post;
@@ -294,7 +307,7 @@ class Base extends Singleton {
 			$editingMode = $this->getEditingMode($post->ID);
 			if ($editingMode !== self::EDITING_MODE_PENDING || current_user_can('accept_revisions', $post->ID)) { return $translation; }
 
-			return 'Suggest edit';
+			return __('Suggest edit', self::DOMAIN); // [TODO] should this string itself be translated?
 		}
 		return $translation;
 	}

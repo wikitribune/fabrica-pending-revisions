@@ -24,7 +24,7 @@ class Settings extends Singleton {
 		$this->settings['revision_not_accepted_notification_message'] = isset($this->settings['revision_not_accepted_notification_message']) ? $this->settings['revision_not_accepted_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).';
 		$this->settings['revision_not_accepted_editors_notification_message'] = isset($this->settings['revision_not_accepted_editors_notification_message']) ? $this->settings['revision_not_accepted_editors_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. <a href="%s">Compare the published and pending versions</a>';
 		$this->settings['edits_require_approval_notification_message'] = isset($this->settings['edits_require_approval_notification_message']) ? $this->settings['edits_require_approval_notification_message'] : 'Changes to this %s require the approval of an editor before they will be made public.';
-		$this->settings['post_locked_notification_message'] = isset($this->settings['post_locked_notification_message']) ? $this->settings['post_locked_notification_message'] : 'This %s is currently locked and cannot be edited; please try again later. In the meantime you can use the Talk page to discuss its contents.';
+		$this->settings['post_locked_notification_message'] = isset($this->settings['post_locked_notification_message']) ? $this->settings['post_locked_notification_message'] : 'This %1$s is currently locked and cannot be edited; please try again later. In the meantime you can use the <a href="%2$s#talk">Talk page</a> to discuss its contents.';
 
 		return $this->settings;
 	}
@@ -150,7 +150,7 @@ class Settings extends Singleton {
 			'notifications_messages', // Section
 			array(
 				'notificationMessage' => 'post_locked_notification_message',
-				'note' => __('Use <code>%s</code> for post type name.'),
+				'note' => __('Use <code>%1$s</code> for post type name and <code>%2$s</code> for the post permalink.'),
 			) // Callback arguments
 		);
 	}
