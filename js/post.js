@@ -1,12 +1,6 @@
 (function($) {
 	$(function() {
 
-		// Disable update/publish button if post is locked and user is not editor
-		if (fprData.editingMode === 'locked' && !fprData.canUserPublishPosts) {
-			$('#publish').attr('disabled', true);
-			$('#major-publishing-actions').show();
-		}
-
 		// Handle permissions metabox saving
 		var $button = $('.fpr-editing-mode__button button');
 		$button.click(function(event) {

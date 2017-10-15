@@ -224,12 +224,6 @@ class Base extends Singleton {
 		if ($editingMode === self::EDITING_MODE_PENDING) {
 			$postType = get_post_type_object(get_post_type($postID));
 			return '<p>' . sprintf(__($settings['edits_require_approval_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
-		} else if ($editingMode === self::EDITING_MODE_LOCKED) {
-
-			// Hide the update/publish button completly if JS is not available to disable it
-			echo '<style>#major-publishing-actions { display: none; }</style>';
-			$postType = get_post_type_object(get_post_type($postID));
-			return '<p><span class="dashicons dashicons-lock"></span> ' . sprintf(__($settings['post_locked_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 		}
 
 		return '';
@@ -297,7 +291,7 @@ class Base extends Singleton {
 			$editingMode = $this->getEditingMode($post->ID);
 			if ($editingMode !== self::EDITING_MODE_PENDING || current_user_can('accept_revisions', $post->ID)) { return $translation; }
 
-			return __('Suggest edit', self::DOMAIN); // [TODO] should this string itself be translated?
+			return __('Suggest edit', self::DOMAIN);
 		}
 		return $translation;
 	}
