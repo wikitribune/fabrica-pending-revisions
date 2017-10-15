@@ -14,6 +14,12 @@
 	text-align: right;
 }
 
+.fpr-editing-mode__saved-notice {
+	display: inline-block;
+	margin-right: 10px;
+	color: #46b450;
+}
+
 @media screen and (max-width: 783px) {
 	.fpr-editing-mode__input-label {
 		margin-bottom: 15px;

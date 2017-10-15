@@ -6,6 +6,7 @@
 		$button.click(function(event) {
 			$button.attr('disabled', true);
 			$('html').addClass('fpr-util-wait');
+			$('.fpr-editing-mode__saved-notice').remove();
 			var data = {
 				action: 'fpr-editing-mode-save',
 				data: {
@@ -22,6 +23,9 @@
 				complete: function(data) {
 					$button.attr('disabled', false);
 					$('html').removeClass('fpr-util-wait');
+					$('.fpr-editing-mode__button').prepend(
+						$('<span class="fpr-editing-mode__saved-notice">Saved</span>')
+					);
 				}
 			});
 		});
