@@ -156,21 +156,11 @@ class Base extends Singleton {
 		return $where;
 	}
 
-	// Generates a transient ID from a post ID and user ID
-	private function generateSavedPendingTransientID($postID, $userID) {
-		if (!$postID || !$userID) { return false; }
-		return 'fpr_saved_pending_' . $postID . '_' . $userID;
-	}
-
 	// Update accepted revision if allowed
 	public function saveAcceptedRevision($postID, $post, $update) {
 
 		$editingMode = $this->getEditingMode($postID);
 		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
-
-		// Assume revision will be saved as pending approval
-		$transientID = $this->generateSavedPendingTransientID($postID, get_current_user_id());
-		set_transient($transientID, true, 15 * MINUTE_IN_SECONDS);
 
 		// Check if user is authorised to publish changes
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postID)) { return; }
@@ -181,26 +171,26 @@ class Base extends Singleton {
 		// Get accepted revision
 		$args = array('post_author' => get_current_user_id());
 		$revision = $this->getLatestRevision($postID, $args);
-		if (!$revision) { return; } // No accepted revision
+		if (!$revision) { return; } // No revision to accept
 
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
 		update_post_meta($postID, '_fpr_accepted_revision_id', $acceptedID);
-		delete_transient($transientID);
 	}
 
 	// Change notification message when post is updated if pending approval
 	public function changePostUpdatedMessages($messages) {
 		global $post;
 		if (empty($post)) { return; }
-		$transientID = $this->generateSavedPendingTransientID($post->ID, get_current_user_id());
-		if (!get_transient($transientID)) { return; }
-
+		$args = array('post_author' => get_current_user_id());
+		$latestRevision = $this->getLatestRevision($post->ID, $args);
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
+		if (!$acceptedID || !$latestRevision || $acceptedID == $latestRevision->ID) { return $messages; }
+
+		// Revision saved by user is not the accepted: show pending revision submitted notice
 		$settings = Settings::instance()->getSettings();
 		$messages[$post->post_type][1] = sprintf(__($settings['revision_submitted_pending_approval_notification_message'] ?: '', self::DOMAIN), get_permalink($post));
 		$messages[$post->post_type][4] = $messages[$post->post_type][1];
-		delete_transient($transientID);
 
 		return $messages;
 	}
