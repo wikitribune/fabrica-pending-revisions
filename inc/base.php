@@ -63,7 +63,6 @@ class Base extends Singleton {
 		// Browse revisions
 		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
-		add_action('load-revision.php', array($this, 'redirectAutosaveBrowse'));
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
@@ -385,22 +384,18 @@ class Base extends Singleton {
 	public function filterBrowseRevisions($where) {
 		$screen = get_current_screen();
 		if (!$screen || $screen->base != 'revision') { return $where; }
-		return $this->filterOutAutosaves($where);
-	}
-
-	// Check if revision on browse revisions page is an autosave and, if so, redirect to latest non-autosave revision
-	public function redirectAutosaveBrowse() {
-		if (empty($_GET['revision'])) { return; }
+		if (empty($_GET['revision'])) { return $this->filterOutAutosaves($where); }
 
 		// Check if revision is an autosave
 		$postID = wp_is_post_autosave($_GET['revision']);
-		if (!$postID) { return; }
+		if (!$postID) { return $this->filterOutAutosaves($where); }
 
-		// Generate URL with latest non-autosave revision and redirect
-		$query = $_GET;
-		$query['revision'] = $this->getLatestRevision($postID)->ID;
-		wp_redirect($_SERVER['PHP_SELF'] . '?' . http_build_query($query));
-		exit();
+		// Exclude every autosave but the requested one
+		global $wpdb;
+		$where .= " AND (" . $wpdb->prefix . "posts.post_name NOT LIKE '%-autosave-v1'";
+		$where .= " OR " . $wpdb->prefix . "posts.ID = " . $_GET['revision'] . ")";
+
+		return $where;
 	}
 
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
