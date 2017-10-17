@@ -330,6 +330,7 @@ class Base extends Singleton {
 		$editingMode = $this->getEditingMode($args[2]);
 		if ($editingMode != self::EDITING_MODE_LOCKED) { return $allcaps; }
 
+		// Post is locked and user does not have `accept_revisions` capability
 		return false;
 	}
 
