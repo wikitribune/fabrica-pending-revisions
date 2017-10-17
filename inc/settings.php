@@ -21,6 +21,7 @@ class Settings extends Singleton {
 
 		// Default settings
 		$this->settings['revision_submitted_pending_approval_notification_message'] = isset($this->settings['revision_submitted_pending_approval_notification_message']) ? $this->settings['revision_submitted_pending_approval_notification_message'] : 'Revision submitted and pending approval by an Editor and the community. <a href="%s">View the original article</a>';
+		$this->settings['revision_restored_pending_approval_notification_message'] = isset($this->settings['revision_restored_pending_approval_notification_message']) ? $this->settings['revision_restored_pending_approval_notification_message'] : '%1$s restored to revision from %2$s and pending approval by an Editor and the community.';
 		$this->settings['revision_not_accepted_notification_message'] = isset($this->settings['revision_not_accepted_notification_message']) ? $this->settings['revision_not_accepted_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. You\'ll be adding your own suggested changes to theirs below (if you need help spotting their suggestions, check the <a href="%s">compare the published and pending versions</a>).';
 		$this->settings['revision_not_accepted_editors_notification_message'] = isset($this->settings['revision_not_accepted_editors_notification_message']) ? $this->settings['revision_not_accepted_editors_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. <a href="%s">Compare the published and pending versions</a>';
 		$this->settings['edits_require_approval_notification_message'] = isset($this->settings['edits_require_approval_notification_message']) ? $this->settings['edits_require_approval_notification_message'] : 'Changes to this %s require the approval of an editor before they will be made public.';
@@ -103,6 +104,18 @@ class Settings extends Singleton {
 			array(
 				'notificationMessage' => 'revision_submitted_pending_approval_notification_message',
 				'note' => __('Use <code>%s</code> for post (accepted revision) permalink.'),
+			) // Callback arguments
+		);
+
+		add_settings_field(
+			'revision_restored_pending_approval_notification_message', // ID
+			__('Revision restored and pending approval', Base::DOMAIN), // Title
+			array($this, 'renderNotificationMessageSetting'), // Callback
+			'fpr-settings', // Page
+			'notifications_messages', // Section
+			array(
+				'notificationMessage' => 'revision_restored_pending_approval_notification_message',
+				'note' => __('Use <code>%1$s</code> for post type name and <code>%2$s</code> for revision title.'),
 			) // Callback arguments
 		);
 
@@ -214,6 +227,7 @@ class Settings extends Singleton {
 
 		$fieldNames = array(
 			'revision_submitted_pending_approval_notification_message',
+			'revision_restored_pending_approval_notification_message',
 			'revision_not_accepted_notification_message',
 			'revision_not_accepted_editors_notification_message',
 			'edits_require_approval_notification_message',

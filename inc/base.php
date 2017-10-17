@@ -190,6 +190,10 @@ class Base extends Singleton {
 		$settings = Settings::instance()->getSettings();
 		$messages[$post->post_type][1] = sprintf(__($settings['revision_submitted_pending_approval_notification_message'] ?: '', self::DOMAIN), get_permalink($post));
 		$messages[$post->post_type][4] = $messages[$post->post_type][1];
+		if (isset($_GET['revision'])) {
+			$postType = get_post_type_object($post->post_type);
+			$messages[$post->post_type][5] =  sprintf(__($settings['revision_restored_pending_approval_notification_message'] ?: '', self::DOMAIN), esc_html($postType->labels->singular_name), wp_post_revision_title((int) $_GET['revision'], false));
+		}
 
 		return $messages;
 	}
