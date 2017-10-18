@@ -63,6 +63,7 @@ class Base extends Singleton {
 		// Browse revisions
 		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
+		add_filter('admin_body_class', array($this, 'addAutosaveBodyClass'));
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
@@ -401,6 +402,20 @@ class Base extends Singleton {
 		$where .= " OR " . $wpdb->prefix . "posts.ID = " . $_GET['revision'] . ")";
 
 		return $where;
+	}
+
+	// Add a body class to Browse revisions when showing an autosave
+	public function addAutosaveBodyClass($classes) {
+		$screen = get_current_screen();
+		if (!$screen || $screen->base != 'revision') { return $classes; }
+		if (empty($_GET['revision'])) { return $classes; }
+
+		// Check if revision is an autosave
+		$postID = wp_is_post_autosave($_GET['revision']);
+		if (!$postID) { return $classes; }
+
+		$classes .= ' fpr-autosave-revision ';
+		return $classes;
 	}
 
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post

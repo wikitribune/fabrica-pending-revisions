@@ -75,6 +75,13 @@
 	z-index: 1;
 }
 
+.fpr-autosave-revision .revisions-buttons,
+.fpr-autosave-revision .revisions-checkbox,
+.fpr-autosave-revision .revisions-tickmarks,
+.fpr-autosave-revision .wp-slider {
+	display: none;
+}
+
 /* Utilities */
 
 .fpr-util-wait,
