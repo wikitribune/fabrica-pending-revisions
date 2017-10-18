@@ -47,7 +47,7 @@
 		// Disable Restore revision button for last revisions
 		var sliding = false, sliderData = { value: null, values: null};
 		// Values retrieved from Slider are not always up-to-date so get them from the event itself
-		$('.wp-slider').on('slide', function(event, ui) {
+		$('.wp-slider').on('slide change', function(event, ui) {
 			sliderData.value = ui.value;
 			sliderData.values = ui.values;
 		});
@@ -57,13 +57,18 @@
 			sliding = true;
 			var $slider = $('.wp-slider'),
 				value = sliderData.value !== null ? sliderData.value : $slider.slider('value'),
-				values = sliderData.values !== null ? sliderData.values : $slider.slider('values');
+				values = sliderData.values !== null ? sliderData.values : $slider.slider('values'),
+				latestRevision = revisionData.length - 1;
 			if (values && values.length > 0) {
 				value = isRtl ? values[0] : values[1];
 			}
-			var position = isRtl ? revisionData.length - value - 1 : value;
+			var position = isRtl ? latestRevision - value : value;
 
-			if (position == revisionData.length - 1) {
+			if (revisionData[latestRevision].autosave) {
+				// Autosave can be restored but lastest revision excluding autosave can't
+				latestRevision--;
+			}
+			if (position == latestRevision) {
 				$('.restore-revision.button').attr('disabled', true);
 			}
 			sliding = false;
