@@ -120,6 +120,21 @@ class Base extends Singleton {
 		exit();
 	}
 
+	// Check and update missing accepted revision — most likely plugin was not installed when post was created
+	private function saveMissingAcceptedRevision($postArray) {
+		if ($postArray['post_status'] != 'publish') { return; }
+		$acceptedID = get_post_meta($postArray['ID'], '_fpr_accepted_revision_id');
+		if ($acceptedID) { return; }
+
+		// Post's accepted revision ID is not set: set it to the lastest revision no matter which since it's already assumed as published
+		$revision = $this->getLatestRevision($postArray['ID']);
+		if (!$revision) { return; } // No revision to accept (new post)
+
+		// Set pointer to accepted revision
+		$acceptedID = $revision->ID;
+		update_post_meta($postArray['ID'], '_fpr_accepted_revision_id', $acceptedID);
+	}
+
 	// Get user and posts permissions to determine whether or not post can be saved by current user
 	public function checkSaveAllowed($maybeEmpty, $postArray) {
 		$editingMode = $this->getEditingMode($postArray['ID']);
@@ -128,6 +143,14 @@ class Base extends Singleton {
 		if ($editingMode === self::EDITING_MODE_LOCKED && !current_user_can('accept_revisions', $postArray['ID'])) {
 			return false;
 		}
+
+		// Check if accepted ID will be updated (ie., post not being saved as pending)
+		$editingMode = $this->getEditingMode($postArray['ID']);
+		if ($editingMode == self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postArray['ID'])) { return $maybeEmpty; }
+		if (!isset($_POST['fpr-pending-revisions'])) { return $maybeEmpty; }
+
+		// Accepted ID won't be updated: check if it's missing and force update
+		$this->saveMissingAcceptedRevision($postArray);
 
 		return $maybeEmpty;
 	}
@@ -158,11 +181,10 @@ class Base extends Singleton {
 
 	// Update accepted revision if allowed
 	public function saveAcceptedRevision($postID, $post, $update) {
-
-		$editingMode = $this->getEditingMode($postID);
 		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
 		// Check if user is authorised to publish changes
+		$editingMode = $this->getEditingMode($postID);
 		if ($editingMode !== self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postID)) { return; }
 
 		// Publish only if not set to save as pending revisions
@@ -184,7 +206,7 @@ class Base extends Singleton {
 		if (empty($post)) { return; }
 		$args = array('post_author' => get_current_user_id());
 		$latestRevision = $this->getLatestRevision($post->ID, $args);
-		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $post->ID;
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID || !$latestRevision || $acceptedID == $latestRevision->ID) { return $messages; }
 
 		// Revision saved by user is not the accepted: show pending revision submitted notice
