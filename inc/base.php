@@ -247,12 +247,10 @@ class Base extends Singleton {
 		// Show notifications depending on editing mode
 		$settings = Settings::instance()->getSettings();
 		$editingMode = $this->getEditingMode($postID);
-		if ($editingMode === self::EDITING_MODE_PENDING) {
-			$postType = get_post_type_object(get_post_type($postID));
-			return '<p>' . sprintf(__($settings['edits_require_approval_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
-		}
+		if ($editingMode !== self::EDITING_MODE_PENDING) { return ''; }
 
-		return '';
+		$postType = get_post_type_object(get_post_type($postID));
+		return '<p>' . sprintf(__($settings['edits_require_approval_notification_message'], self::DOMAIN), esc_html($postType->labels->singular_name)) . '</p>';
 	}
 
 	// Show collected notification messages
