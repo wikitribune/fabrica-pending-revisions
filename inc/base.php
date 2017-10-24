@@ -466,9 +466,11 @@ class Base extends Singleton {
 
 		// Data to pass to Post's Javascript
 		$editingMode = $this->getEditingMode($post->ID);
+		$latestRevisionID = $this->getLatestRevision($post->ID)->ID;
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
+			'latestRevisionID' => $latestRevisionID,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'url' => admin_url('admin-ajax.php')
 		);
