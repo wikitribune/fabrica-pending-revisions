@@ -147,7 +147,7 @@ class Base extends Singleton {
 		// Check if accepted ID will be updated (ie., post not being saved as pending)
 		$editingMode = $this->getEditingMode($postArray['ID']);
 		if ($editingMode == self::EDITING_MODE_OPEN && !current_user_can('accept_revisions', $postArray['ID'])) { return $maybeEmpty; }
-		if (!isset($_POST['fpr-pending-revisions'])) { return $maybeEmpty; }
+		if (current_user_can('accept_revisions', $postArray['ID']) && !isset($_POST['fpr-pending-revisions'])) { return $maybeEmpty; }
 
 		// Accepted ID won't be updated: check if it's missing and force update
 		$this->saveMissingAcceptedRevision($postArray);
