@@ -466,11 +466,11 @@ class Base extends Singleton {
 
 		// Data to pass to Post's Javascript
 		$editingMode = $this->getEditingMode($post->ID);
-		$latestRevisionID = $this->getLatestRevision($post->ID)->ID;
+		$latestRevision = $this->getLatestRevision($post->ID);
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
-			'latestRevisionID' => $latestRevisionID,
+			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'url' => admin_url('admin-ajax.php')
 		);
@@ -483,7 +483,7 @@ class Base extends Singleton {
 			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::MAIN_FILE) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hookSuffix == 'revision.php') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/main.css');
+			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/revisions.css');
 			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::MAIN_FILE) . 'js/revisions.js', array('jquery', 'revisions'));
 		} else if ($hookSuffix == 'settings_page_fpr-settings') {
 			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/settings.css');

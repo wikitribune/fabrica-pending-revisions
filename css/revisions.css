@@ -1,0 +1,47 @@
+/* Fix themes that set background for the timeline */
+.revisions-tickmarks * {
+	z-index: 1;
+}
+
+/* No timeline for autosave revisions */
+.fpr-autosave-revision .revisions-buttons,
+.fpr-autosave-revision .revisions-checkbox,
+.fpr-autosave-revision .revisions-tickmarks,
+.fpr-autosave-revision .wp-slider {
+	display: none;
+}
+
+/* Column headers */
+.revisions-meta {
+	display: none;
+}
+
+.revisions-controls {
+	height: auto;
+}
+
+.revisions-headers {
+	display: flex;
+	clear: both;
+	margin: 3rem 0;
+	padding: 3rem 0;
+	border-top: 1px solid black; /* ~%~ [FIX] color */
+	border-bottom: 1px solid black; /* ~%~ [FIX] color */
+}
+
+.revisions-headers__from, .revisions-headers__to {
+	width: 50%;
+}
+
+.revisions-headers__info {
+	font-size: 1rem;
+	font-weight: bold;
+}
+
+.revisions-headers__type--current {
+	color: #46b450;
+}
+
+.revisions-headers__type--pending {
+	color: #359dd9;
+}
