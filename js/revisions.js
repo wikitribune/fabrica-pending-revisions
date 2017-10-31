@@ -44,7 +44,6 @@
 		});
 		$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
 
-		// [TODO] remove (will be rendered obsolete by columns headers)
 		// Disable Restore revision button for last revisions
 		var sliding = false, sliderData = { value: null, values: null};
 		// Values retrieved from Slider are not always up-to-date so get them from the event itself
@@ -76,55 +75,5 @@
 		};
 		disableLastRevisionRestore();
 		$('.diff-meta-to').on('DOMSubtreeModified', disableLastRevisionRestore);
-
-		// Change columns' header cards
-		var $revisionsHeaders = $('<div>', {class: 'revisions-headers'});
-		$('.revisions-controls').append($revisionsHeaders);
-		var renderColumnHeader = function(side, revision) {
-			var $revisionType = $('<span>', {class: 'revisions-headers__type'}),
-				$revisionID = $('<span>', {class: 'revisions-headers__id'}),
-				$revisionInfo = $('<div>', {class: 'revisions-headers__info'}),
-				$header = $('<div>', {class: 'revisions-headers__' + side});
-
-			if (revision.current) {
-				$revisionType.addClass('revisions-headers__type--current')
-					.text('Current Published');
-			} else if (revision.pending) {
-				$revisionType.addClass('revisions-headers__type--pending')
-					.text('Pending');
-			}
-			$revisionID.text(' Revision ID ' + revision.id);
-			$revisionInfo.append($revisionType).append($revisionID);
-			$header.append($revisionInfo);
-
-			return $header;
-		};
-		var renderColumnHeaders = function(value, values) {
-			var latestRevision = revisionData.length - 1;
-
-			if (values && values.length > 0 && isRtl) {
-				value = values[0];
-				values[0] = values[1];
-				values[1] = value;
-			} else if (!values || values.length <= 0) {
-				values = [];
-				values[0] = value - 1;
-				values[1] = value;
-			}
-			var positions = values;
-			if (isRtl) {
-				positions[0] = latestRevision - values[0];
-				positions[1] = latestRevision - values[1];
-			}
-
-			var $headerFrom = renderColumnHeader('from', revisionData[positions[0]]),
-				$headerTo = renderColumnHeader('to', revisionData[positions[1]]);
-				$revisionsHeaders.empty().append($headerFrom).append($headerTo);
-		};
-		var $slider = $('.wp-slider');
-		$slider.on('slide change', function(event, ui) {
-			renderColumnHeaders(ui.value, ui.values);
-		});
-		renderColumnHeaders($slider.slider('value'), $slider.slider('values'));
 	});
 })(jQuery);
