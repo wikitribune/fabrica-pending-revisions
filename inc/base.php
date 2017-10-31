@@ -408,7 +408,7 @@ class Base extends Singleton {
 
 	// Sort Pending Revisions column
 	public function sortByPendingColumn($orderby, $query) {
-		if (!$query->is_main_query() || $query->get('orderby') != 'pending_revisions') { return; }
+		if (!$query->is_main_query() || $query->get('orderby') != 'pending_revisions') { return $orderby; }
 
 		$order = strtoupper($query->get('order'));
 		if (!in_array($order, array('ASC', 'DESC'))) { $order = 'ASC'; }
