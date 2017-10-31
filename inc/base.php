@@ -177,7 +177,7 @@ class Base extends Singleton {
 	// Adds the temporary WHERE clause needed to exclude autosave from the revisions list
 	public function filterOutAutosaves($where) {
 		global $wpdb;
-		$where .= " AND " . $wpdb->prefix . "posts.post_name NOT LIKE '%-autosave-v1'";
+		$where .= " AND {$wpdb->posts}.post_name NOT LIKE '%-autosave-v1'";
 		return $where;
 	}
 
@@ -433,7 +433,7 @@ class Base extends Singleton {
 			return;
 		}
 		$screen = get_current_screen();
-		if (empty($screen) || $screen->base != 'revision') {
+		if (!empty($screen) && $screen->base == 'revision') {
 			$query->set('suppress_filters', false);
 		}
 	}
