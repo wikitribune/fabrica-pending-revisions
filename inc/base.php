@@ -508,9 +508,7 @@ class Base extends Singleton {
 		if ($acceptedID) {
 			$pendingCount = 0;
 			foreach ($revisions as $revision) {
-				if ($revision->ID == $acceptedID) {
-					break;
-				}
+				if ($revision->ID == $acceptedID) { break; }
 				$pendingCount++;
 			}
 		}
