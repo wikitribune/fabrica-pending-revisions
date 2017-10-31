@@ -1,21 +1,20 @@
 (function($) {
 	$(function() {
 
-		// Point browse revisions link to latest non-autosave revision
+		// Update Publish metabox revisions info not to include autosave revisions
 		var $browseRevisionsLink = $('.misc-pub-revisions a'),
-			browseRevisionsLinkParts = $browseRevisionsLink.attr('href').split('revision=');
+			browseRevisionsLinkParts = $browseRevisionsLink.attr('href').split('revision='),
+			$revisionsCount = $('.misc-pub-revisions b').text(fprData.revisionsCount);
+		if (fprData.revisionsCount && fprData.revisionsCount > 0) {
+			$revisionsCount.after($('<span>', {text: ' (' + fprData.pendingCount + ' pending)'}));
+		}
 		if (browseRevisionsLinkParts.length > 1) {
 			var linkRevisionID = browseRevisionsLinkParts[1];
 			if (fprData.latestRevisionID && linkRevisionID != fprData.latestRevisionID) {
 
-				// Not the non-autosave latest revision
-				var $browseRevisionsCount = $('.misc-pub-revisions b'),
-					browseRevisionsCount = $browseRevisionsCount.text(),
-					newBrowseRevisionsLink = $browseRevisionsLink.attr('href').replace('=' + linkRevisionID, '=' + fprData.latestRevisionID);
+				// Change link to the latest non-autosave revision
+				var newBrowseRevisionsLink = $browseRevisionsLink.attr('href').replace('=' + linkRevisionID, '=' + fprData.latestRevisionID);
 				$browseRevisionsLink.attr('href', newBrowseRevisionsLink);
-				if (!isNaN(browseRevisionsCount)) {
-					$browseRevisionsCount.text(parseInt(browseRevisionsCount) - 1);
-				}
 			}
 		}
 

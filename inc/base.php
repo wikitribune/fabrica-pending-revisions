@@ -125,7 +125,7 @@ class Base extends Singleton {
 	// Check and update missing accepted revision — most likely plugin was not installed when post was created
 	private function saveMissingAcceptedRevision($postArray) {
 		if ($postArray['post_status'] != 'publish') { return; }
-		$acceptedID = get_post_meta($postArray['ID'], '_fpr_accepted_revision_id');
+		$acceptedID = get_post_meta($postArray['ID'], '_fpr_accepted_revision_id', true);
 		if ($acceptedID) { return; }
 
 		// Post's accepted revision ID is not set: set it to the lastest revision no matter which since it's already assumed as published
@@ -496,12 +496,33 @@ class Base extends Singleton {
 			return array();
 		}
 
+		// Get non-autosave revisions count for Publish metabox info
+		$args = array(
+			'posts_per_page' => -1,
+			'order' => 'DESC',
+		);
+		$revisions = $this->getNonAutosaveRevisions($post->ID, $args);
+		$revisionsCount = count($revisions);
+		$pendingCount = false;
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
+		if ($acceptedID) {
+			$pendingCount = 0;
+			foreach ($revisions as $revision) {
+				if ($revision->ID == $acceptedID) {
+					break;
+				}
+				$pendingCount++;
+			}
+		}
+
 		// Data to pass to Post's Javascript
 		$editingMode = $this->getEditingMode($post->ID);
 		$latestRevision = $this->getLatestRevision($post->ID);
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
+			'revisionsCount' => $revisionsCount,
+			'pendingCount' => $pendingCount,
 			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'url' => admin_url('admin-ajax.php')
