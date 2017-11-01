@@ -34,6 +34,8 @@ class Base extends Singleton {
 		),
 	);
 
+	private $postTypesSupported;
+
 	public function init() {
 		if (!is_admin()) { return; }
 
@@ -57,10 +59,7 @@ class Base extends Singleton {
 		add_action('user_has_cap', array($this, 'disableLockedPosts'), 10, 3);
 		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 
-		// Post list columns
-		add_action('manage_posts_columns', array($this, 'addPendingColumn'));
-		add_action('manage_posts_custom_column', array($this, 'getPendingColumnContent'), 10, 2);
-		add_action('manage_edit-post_sortable_columns', array($this, 'sortablePendingColumn'));
+		// Sort by pending revisions in posts lists
 		add_filter('posts_orderby', array($this, 'sortByPendingColumn'), 10, 2);
 
 		// Browse revisions
@@ -74,19 +73,21 @@ class Base extends Singleton {
 
 	// Get post types for which plugin is enabled
 	public function getEnabledPostTypes() {
+		if ($this->postTypesSupported) { return $this->postTypesSupported; }
+
 		$settings = Settings::instance()->getSettings();
 		$args = array('public' => true);
 		$postTypes = get_post_types($args);
-		$enabledPostTypes = array();
+		$this->postTypesSupported = array();
 		foreach ($postTypes as $postType) {
 			$settingName = $postType . '_default_editing_mode';
 			$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
 			if ($defaultEditingMode != self::EDITING_MODE_OFF && in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
-				$enabledPostTypes []= $postType;
+				$this->postTypesSupported []= $postType;
 			}
 		}
 
-		return $enabledPostTypes;
+		return $this->postTypesSupported;
 	}
 
 	// Return the editing mode for a given post. If no editing mode is defined the post type's default editing mode is returned
@@ -266,15 +267,32 @@ class Base extends Singleton {
 
 	// Initialise page
 	public function initPostEdit() {
-		$postID = get_the_ID();
-		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes()) || get_current_screen()->base != 'post') { return; }
+		$screen = get_current_screen();
+		$enabledPostTypes = $this->getEnabledPostTypes();
+		if (!in_array($screen->post_type, $enabledPostTypes)) { return; }
+		if ($screen->base == 'post') { // Edit post page
+			$postID = get_the_ID();
+			if (empty($postID)) { return; }
 
-		// Get and show notification messages
-		$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
-		$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
+			// Get and show notification messages
+			$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
+			$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
 
-		if (!empty($this->notificationMessages)) {
-			add_action('admin_notices', array($this, 'showNotificationMessages'));
+			if (!empty($this->notificationMessages)) {
+				add_action('admin_notices', array($this, 'showNotificationMessages'));
+			}
+		} else if ($screen->base == 'edit') { // Post list page
+
+			// Add hooks to add pending revisions column to post list for all enabled post types
+			$postTypeString = "{$screen->post_type}_posts";
+			if ($postTypeString == 'post') {
+				$postTypeString = 'posts';
+			} else if ($postTypeString == 'page') {
+				$postTypeString = 'pages';
+			}
+			add_action("manage_{$postTypeString}_columns", array($this, 'addPendingColumn'));
+			add_action("manage_{$postTypeString}_custom_column", array($this, 'getPendingColumnContent'), 10, 2);
+			add_action("manage_{$screen->id}_sortable_columns", array($this, 'sortablePendingColumn'));
 		}
 	}
 
@@ -429,7 +447,8 @@ class Base extends Singleton {
 
 	// Enable filters for getting posts in Browse revisions page, so that Autosaves can be removed, and when sorting 'pending_revisions' column
 	public function enablePostsFilters($query) {
-		if ($query->is_main_query() && $query->get('orderby') == 'pending_revisions') { $query->set('suppress_filters', false);
+		if ($query->is_main_query() && $query->get('orderby') == 'pending_revisions') {
+			$query->set('suppress_filters', false);
 			return;
 		}
 		$screen = get_current_screen();

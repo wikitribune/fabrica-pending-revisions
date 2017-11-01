@@ -5,7 +5,7 @@
 		var $browseRevisionsLink = $('.misc-pub-revisions a'),
 			browseRevisionsLinkParts = $browseRevisionsLink.attr('href').split('revision='),
 			$revisionsCount = $('.misc-pub-revisions b').text(fprData.revisionsCount);
-		if (fprData.revisionsCount && fprData.revisionsCount > 0) {
+		if (fprData.pendingCount && parseInt(fprData.pendingCount) > 0) {
 			$revisionsCount.after($('<span>', {text: ' (' + fprData.pendingCount + ' pending)'}));
 		}
 		if (browseRevisionsLinkParts.length > 1) {
