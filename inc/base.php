@@ -34,6 +34,8 @@ class Base extends Singleton {
 		),
 	);
 
+	private $postTypesSupported;
+
 	public function init() {
 		if (!is_admin()) { return; }
 
@@ -53,15 +55,14 @@ class Base extends Singleton {
 		add_filter('gettext', array($this, 'alterText'), 10, 2);
 		add_action('add_meta_boxes', array($this, 'addPermissionsMetaBox'));
 
-		// Disable locked posts
+		// Disable locked posts and enable posts filters
 		add_action('user_has_cap', array($this, 'disableLockedPosts'), 10, 3);
+		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 
-		// Post list columns
-		add_action('manage_posts_columns', array($this, 'addPendingColumn'));
-		add_action('manage_posts_custom_column', array($this, 'getPendingColumnContent'), 10, 2);
+		// Sort by pending revisions in posts lists
+		add_filter('posts_orderby', array($this, 'sortByPendingColumn'), 10, 2);
 
 		// Browse revisions
-		add_action('pre_get_posts', array($this, 'enablePostsFilters'));
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
 		add_filter('admin_body_class', array($this, 'addAutosaveBodyClass'));
 
@@ -72,19 +73,21 @@ class Base extends Singleton {
 
 	// Get post types for which plugin is enabled
 	public function getEnabledPostTypes() {
+		if ($this->postTypesSupported) { return $this->postTypesSupported; }
+
 		$settings = Settings::instance()->getSettings();
 		$args = array('public' => true);
 		$postTypes = get_post_types($args);
-		$enabledPostTypes = array();
+		$this->postTypesSupported = array();
 		foreach ($postTypes as $postType) {
 			$settingName = $postType . '_default_editing_mode';
 			$defaultEditingMode = isset($settings[$settingName]) ? $settings[$settingName] : '';
 			if ($defaultEditingMode != self::EDITING_MODE_OFF && in_array($defaultEditingMode, array_keys(self::EDITING_MODES))) {
-				$enabledPostTypes []= $postType;
+				$this->postTypesSupported []= $postType;
 			}
 		}
 
-		return $enabledPostTypes;
+		return $this->postTypesSupported;
 	}
 
 	// Return the editing mode for a given post. If no editing mode is defined the post type's default editing mode is returned
@@ -123,7 +126,7 @@ class Base extends Singleton {
 	// Check and update missing accepted revision — most likely plugin was not installed when post was created
 	private function saveMissingAcceptedRevision($postArray) {
 		if ($postArray['post_status'] != 'publish') { return; }
-		$acceptedID = get_post_meta($postArray['ID'], '_fpr_accepted_revision_id');
+		$acceptedID = get_post_meta($postArray['ID'], '_fpr_accepted_revision_id', true);
 		if ($acceptedID) { return; }
 
 		// Post's accepted revision ID is not set: set it to the lastest revision no matter which since it's already assumed as published
@@ -175,7 +178,7 @@ class Base extends Singleton {
 	// Adds the temporary WHERE clause needed to exclude autosave from the revisions list
 	public function filterOutAutosaves($where) {
 		global $wpdb;
-		$where .= " AND " . $wpdb->prefix . "posts.post_name NOT LIKE '%-autosave-v1'";
+		$where .= " AND {$wpdb->posts}.post_name NOT LIKE '%-autosave-v1'";
 		return $where;
 	}
 
@@ -264,15 +267,32 @@ class Base extends Singleton {
 
 	// Initialise page
 	public function initPostEdit() {
-		$postID = get_the_ID();
-		if (empty($postID) || !in_array(get_post_type($postID), $this->getEnabledPostTypes()) || get_current_screen()->base != 'post') { return; }
+		$screen = get_current_screen();
+		$enabledPostTypes = $this->getEnabledPostTypes();
+		if (!in_array($screen->post_type, $enabledPostTypes)) { return; }
+		if ($screen->base == 'post') { // Edit post page
+			$postID = get_the_ID();
+			if (empty($postID)) { return; }
 
-		// Get and show notification messages
-		$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
-		$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
+			// Get and show notification messages
+			$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
+			$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
 
-		if (!empty($this->notificationMessages)) {
-			add_action('admin_notices', array($this, 'showNotificationMessages'));
+			if (!empty($this->notificationMessages)) {
+				add_action('admin_notices', array($this, 'showNotificationMessages'));
+			}
+		} else if ($screen->base == 'edit') { // Post list page
+
+			// Add hooks to add pending revisions column to post list for all enabled post types
+			$postTypeString = "{$screen->post_type}_posts";
+			if ($postTypeString == 'post') {
+				$postTypeString = 'posts';
+			} else if ($postTypeString == 'page') {
+				$postTypeString = 'pages';
+			}
+			add_action("manage_{$postTypeString}_columns", array($this, 'addPendingColumn'));
+			add_action("manage_{$postTypeString}_custom_column", array($this, 'getPendingColumnContent'), 10, 2);
+			add_action("manage_{$screen->id}_sortable_columns", array($this, 'sortablePendingColumn'));
 		}
 	}
 
@@ -367,43 +387,74 @@ class Base extends Singleton {
 
 	// Filter for Pending Revisions column content
 	public function getPendingColumnContent($column, $postID) {
-		if ($column === 'pending_revisions') {
+		if ($column !== 'pending_revisions') { return; }
 
-			$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-			if (empty($acceptedID)) {
-				echo '—';
-				return;
-			}
-			$accepted = get_post($acceptedID);
-
-			// Get all revisions created after the accepted revision (ie., are pending)
-			$args = array(
-				'date_query' => array(
-					array(
-						'after'     => $accepted->post_date,
-						'inclusive' => false,
-					),
-				),
-				'posts_per_page' => -1,
-			);
-			$revisions = $this->getNonAutosaveRevisions($postID, $args);
-			$revisionsCount = count($revisions);
-			if ($revisionsCount === 0) {
-				echo '—';
-				return;
-			}
-
-			// Link to diff between accepted and latest pending revision
-			$diffLink = admin_url('revision.php?from=' . $acceptedID . '&to=' . current($revisions)->ID);
-			echo '<a href="' . $diffLink . '">' . $revisionsCount . '</a>';
+		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
+		if (empty($acceptedID)) {
+			echo '—';
+			return;
 		}
+		$accepted = get_post($acceptedID);
+
+		// Get all revisions created after the accepted revision (ie., are pending)
+		$args = array(
+			'date_query' => array(
+				array(
+					'after'     => $accepted->post_date,
+					'inclusive' => false,
+				),
+			),
+			'posts_per_page' => -1,
+		);
+		$revisions = $this->getNonAutosaveRevisions($postID, $args);
+		$revisionsCount = count($revisions);
+		if ($revisionsCount === 0) {
+			echo '—';
+			return;
+		}
+
+		// Link to diff between accepted and latest pending revision
+		$diffLink = admin_url('revision.php?from=' . $acceptedID . '&to=' . current($revisions)->ID);
+		echo '<a href="' . $diffLink . '">' . $revisionsCount . '</a>';
 	}
 
-	// Enable filters getting posts in Browse revisions page, so that Autosaves can be removed
+	// Set Pending Revisions column as sortable
+	public function sortablePendingColumn($columns) {
+		$columns['pending_revisions'] = 'pending_revisions';
+		return $columns;
+	}
+
+	// Sort Pending Revisions column
+	public function sortByPendingColumn($orderby, $query) {
+		if (!$query->is_main_query() || $query->get('orderby') != 'pending_revisions') { return $orderby; }
+
+		$order = strtoupper($query->get('order'));
+		if (!in_array($order, array('ASC', 'DESC'))) { $order = 'ASC'; }
+
+		// Count post's revisions posterior to post's accepted revision
+		global $wpdb;
+		$orderby = "(SELECT COUNT(*)
+			FROM {$wpdb->posts} AS revisions, {$wpdb->postmeta} AS postmeta
+			WHERE postmeta.meta_key = '_fpr_accepted_revision_id'
+				AND postmeta.post_id = {$wpdb->posts}.id
+				AND revisions.post_type = 'revision'
+				AND revisions.post_name not like '%-autosave-v1'
+				AND revisions.id > postmeta.meta_value
+				AND revisions.post_parent = {$wpdb->posts}.id) {$order}";
+
+		return $orderby;
+	}
+
+	// Enable filters for getting posts in Browse revisions page, so that Autosaves can be removed, and when sorting 'pending_revisions' column
 	public function enablePostsFilters($query) {
+		if ($query->is_main_query() && $query->get('orderby') == 'pending_revisions') {
+			$query->set('suppress_filters', false);
+			return;
+		}
 		$screen = get_current_screen();
-		if (!$screen || $screen->base != 'revision') { return; }
-		$query->set('suppress_filters', false);
+		if (!empty($screen) && $screen->base == 'revision') {
+			$query->set('suppress_filters', false);
+		}
 	}
 
 	// Remove Autosave revisions from Browse revisions page
@@ -464,12 +515,31 @@ class Base extends Singleton {
 			return array();
 		}
 
+		// Get non-autosave revisions count for Publish metabox info
+		$args = array(
+			'posts_per_page' => -1,
+			'order' => 'DESC',
+		);
+		$revisions = $this->getNonAutosaveRevisions($post->ID, $args);
+		$revisionsCount = count($revisions);
+		$pendingCount = false;
+		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
+		if ($acceptedID) {
+			$pendingCount = 0;
+			foreach ($revisions as $revision) {
+				if ($revision->ID == $acceptedID) { break; }
+				$pendingCount++;
+			}
+		}
+
 		// Data to pass to Post's Javascript
 		$editingMode = $this->getEditingMode($post->ID);
 		$latestRevision = $this->getLatestRevision($post->ID);
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
+			'revisionsCount' => $revisionsCount,
+			'pendingCount' => $pendingCount,
 			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'url' => admin_url('admin-ajax.php')
