@@ -101,24 +101,14 @@
 		};
 		var renderColumnHeaders = function(value, values) {
 			var latestRevision = revisionData.length - 1;
-
-			if (values && values.length > 0 && isRtl) {
-				value = values[0];
-				values[0] = values[1];
-				values[1] = value;
-			} else if (!values || values.length <= 0) {
+			if (!values || values.length <= 0) {
 				values = [];
 				values[0] = value - 1;
 				values[1] = value;
 			}
-			var positions = values;
-			if (isRtl) {
-				positions[0] = latestRevision - values[0];
-				positions[1] = latestRevision - values[1];
-			}
 
-			var $headerFrom = renderColumnHeader('from', revisionData[positions[0]]),
-				$headerTo = renderColumnHeader('to', revisionData[positions[1]]);
+			var $headerFrom = renderColumnHeader('from', revisionData[values[0]]),
+				$headerTo = renderColumnHeader('to', revisionData[values[1]]);
 				$revisionsHeaders.empty().append($headerFrom).append($headerTo);
 		};
 		var $slider = $('.wp-slider');
