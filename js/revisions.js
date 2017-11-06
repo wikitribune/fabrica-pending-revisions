@@ -100,27 +100,26 @@
 					}),
 
 					// Note
-					$('<div>', {
+					((!revision.note && !revision.sourceRevisionID) ? null : $('<div>', {
 						class: 'revisions-headers__note',
 						html: [
-							$('<span>', {
+							((!revision.note) ? null : $('<span>', {
 								class: 'revisions-headers__note-caption',
-								text: 'Note: ' }),
+								text: 'Note: ' })),
 							$('<span>', {
 								html: [
-									$('<div>', {
+									((!revision.note) ? null : $('<div>', {
 										class: 'revisions-headers__note-text',
 										text: revision.note + ' '
-									}),
-									// ~%~ [TODO] set and get based on field
-									// $('<div>', {
-									// 	class: 'revisions-headers__based-on',
-									// 	text: revision.author.role
-									// })
+									})),
+									((!revision.sourceRevisionID) ? null : $('<div>', {
+										class: 'revisions-headers__based-on',
+										text: revision.author.role
+									}))
 								]
 							})
 						]
-					}),
+					})),
 				]
 			});
 

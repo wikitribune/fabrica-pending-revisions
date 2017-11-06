@@ -146,30 +146,30 @@ class Base extends Singleton {
 		if (empty($post)) { return; }
 
 		// Exit for unsupported post types
-		if (!in_array($post->post_type, $this->postTypesSupported)) { return; }
+		if (!in_array($post->post_type, $this->getEnabledPostTypes())) { return; }
 
 		// If a specific revision was requested for editing, use that as the last revision
-		$latestRevisionID = false;
+		$sourceRevisionID = false;
 		if (isset($_GET['fpr-edit']) && is_numeric($_GET['fpr-edit'])) {
 			$revision = get_post($_GET['fpr-edit']);
 			if (!empty($revision) && $revision->post_parent == $post->ID) {
-				$latestRevisionID = $revision->ID;
+				$sourceRevisionID = $revision->ID;
 			}
 		}
 
 		// Otherwise use the last revision
-		if (!$latestRevisionID) {
-			$revision = $this->getLatestRevision($post->ID);;
+		if (!$sourceRevisionID) {
+			$revision = $this->getLatestRevision($post->ID);
 			if (!empty($revision)) {
-				$latestRevisionID = $revision->ID;
+				$sourceRevisionID = $revision->ID;
 			}
 		}
 
 		// Escape if still no revision found
-		if (!$latestRevisionID) { return; }
+		if (!$sourceRevisionID) { return; }
 
 		// Cache latest revision ID
-		echo '<input type="hidden" id="fpr_last_revision_id" name="_fpr_last_revision_id" value="' . $latestRevisionID . '">';
+		echo '<input type="hidden" id="fpr_source_revision_id" name="_fpr_source_revision_id" value="' . $sourceRevisionID . '">';
 	}
 
 	// Get user and posts permissions to determine whether or not post can be saved by current user
@@ -216,9 +216,19 @@ class Base extends Singleton {
 		return $where;
 	}
 
-	// Update accepted revision if allowed
+	// Update accepted revision if allowed and revision ID from which this has originated
 	public function saveAcceptedRevision($postID, $post, $update) {
 		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
+
+		// Save reference to revision on which this one is based
+		$args = array('post_author' => get_current_user_id());
+		$revision = $this->getLatestRevision($postID, $args);
+		if (!$revision) { return; } // No revision to accept or set source revision on
+		if (isset($_POST['_fpr_source_revision_id'])) {
+
+			// Using `update_metadata()` because `update_post_meta()` doesn't save metafields on revisions
+			update_metadata('post', $revision->ID, '_fpr_source_revision_id', $_POST['_fpr_source_revision_id'], '');
+		}
 
 		// Check if user is authorised to publish changes
 		$editingMode = $this->getEditingMode($postID);
@@ -226,11 +236,6 @@ class Base extends Singleton {
 
 		// Publish only if not set to save as pending revisions
 		if (isset($_POST['fpr-pending-revisions'])) { return; }
-
-		// Get accepted revision
-		$args = array('post_author' => get_current_user_id());
-		$revision = $this->getLatestRevision($postID, $args);
-		if (!$revision) { return; } // No revision to accept
 
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
@@ -572,13 +577,13 @@ class Base extends Singleton {
 			}
 		}
 
-		// Set author role
+		// Author role
 		global $wp_roles;
 		$author = get_userdata($revision->post_author);
 		$authorRole = $author->roles[0];
 		$revisionsData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
 
-		// Set revision note if available
+		// Revision note (if available)
 		$revisionsData['note'] = '';
 		$notes = explode(' - ', $revisionsData['timeAgo']);
 		if (count($notes)) {
@@ -586,6 +591,12 @@ class Base extends Singleton {
 			$notes = implode(' - ', $notes);
 			$revisionsData['timeAgo'] = $timeAgo;
 			$revisionsData['note'] = str_replace('Note: ', '', $notes);
+		}
+
+		// Revision on which this one is based
+		$sourceRevisionID = get_metadata('post', $revision->ID, '_fpr_accepted_revision_id', true);
+		if ($sourceRevisionID) {
+			$revisionData['sourceRevisionID'] = $sourceRevisionID;
 		}
 
 		return $revisionsData;
