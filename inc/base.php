@@ -286,8 +286,7 @@ class Base extends Singleton {
 			if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
 			$revisionID = $_GET['fpr-edit'];
 			$revision = get_post($revisionID);
-			if (empty($revision)) { return; }
-			if ($revision->post_parent != $postID) { return; }
+			if (empty($revision) || $revision->post_parent != $postID) { return; }
 
 			// Set WP default values
 			global $post;
