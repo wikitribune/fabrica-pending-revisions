@@ -262,7 +262,7 @@ class Base extends Singleton {
 		// Don't show plugin notifications if there's a saved notification from WP
 		if (!empty($_GET['message'])) { return; }
 		if (empty($this->notificationMessages)) { return; }
-		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
+		echo '<div class="fpr-notice notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
 
 	// Initialise page
