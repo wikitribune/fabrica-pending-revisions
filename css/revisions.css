@@ -16,7 +16,8 @@
 	display: none;
 }
 
-.revisions-controls {
+.revisions-controls,
+.revisions.pinned .revisions-controls {
 	height: auto;
 	min-height: 80px;
 }
@@ -30,17 +31,23 @@
 	display: flex;
 	clear: both;
 	margin: 3rem 0;
-	padding: 3rem 0;
-	border-top: 1px solid black; /* ~%~ [FIX] color */
-	border-bottom: 1px solid black; /* ~%~ [FIX] color */
+	padding: 3rem 1rem;
+	border-top: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
 }
 
-.revisions-headers__from, .revisions-headers__to {
+.revisions-headers__from,
+.revisions-headers__to {
 	width: 50%;
 }
 
-.revisions-headers__info {
+.revisions-headers__title,
+.revisions-headers__date,
+.revisions-headers__author {
 	font-size: 1rem;
+}
+
+.revisions-headers__title {
 	font-weight: bold;
 }
 
@@ -50,4 +57,25 @@
 
 .revisions-headers__type--pending {
 	color: #359dd9;
+}
+
+.revisions-headers__date-ago,
+.revisions-headers__author-name {
+	font-weight: bold;
+}
+
+.revisions-headers__date-long,
+.revisions-headers__author-role {
+	color: #808080;
+}
+
+.revisions-headers__note {
+	display: flex;
+	margin-top: 1rem;
+	color: #808080;
+}
+
+.revisions-headers__note-caption {
+	margin-right: 0.375rem;
+	font-weight: bold;
 }

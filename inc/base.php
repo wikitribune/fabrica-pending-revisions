@@ -67,7 +67,7 @@ class Base extends Singleton {
 		add_filter('admin_body_class', array($this, 'addAutosaveBodyClass'));
 
 		// Scripts
-		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 10, 3);
+		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 20, 3);
 		add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 	}
 
@@ -503,6 +503,22 @@ class Base extends Singleton {
 			if (strtotime($revision->post_date) > strtotime($accepted->post_date)) {
 				$revisionsData['pending'] = true;
 			}
+		}
+
+		// Set author role
+		global $wp_roles;
+		$author = get_userdata($revision->post_author);
+		$authorRole = $author->roles[0];
+		$revisionsData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
+
+		// Set revision note if available
+		$revisionsData['note'] = '';
+		$notes = explode(' - ', $revisionsData['timeAgo']);
+		if (count($notes)) {
+			$timeAgo = array_pop($notes);
+			$notes = implode(' - ', $notes);
+			$revisionsData['timeAgo'] = $timeAgo;
+			$revisionsData['note'] = str_replace('Note: ', '', $notes);
 		}
 
 		return $revisionsData;

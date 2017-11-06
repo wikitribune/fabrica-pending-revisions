@@ -49,21 +49,90 @@
 		var $revisionsHeaders = $('<div>', {class: 'revisions-headers'});
 		$('.revisions-controls').append($revisionsHeaders);
 		var renderColumnHeader = function(side, revision) {
-			var $revisionType = $('<span>', {class: 'revisions-headers__type'}),
-				$revisionID = $('<span>', {class: 'revisions-headers__id'}),
-				$revisionInfo = $('<div>', {class: 'revisions-headers__info'}),
-				$header = $('<div>', {class: 'revisions-headers__' + side});
 
+			// Render header fields
+			var $header = $('<div>', {
+				class: 'revisions-headers__' + side,
+				html: [
+
+					// Title
+					$('<div>', {
+						class: 'revisions-headers__title',
+						html: [
+							$('<span>', { class: 'revisions-headers__type' }),
+							$('<span>', {
+								class: 'revisions-headers__id',
+								text: 'Revision ID ' + revision.id
+							})
+						]
+					}),
+
+					// Submission date/time
+					$('<div>', {
+						class: 'revisions-headers__date',
+						html: [
+							$('<span>', { text: 'submitted ' }),
+							$('<span>', {
+								class: 'revisions-headers__date-ago',
+								text: revision.timeAgo + ' '
+							}),
+							$('<span>', {
+								class: 'revisions-headers__date-long',
+								text: revision.date
+							})
+						]
+					}),
+
+					// Author
+					$('<div>', {
+						class: 'revisions-headers__author',
+						html: [
+							$('<span>', { text: 'by ' }),
+							$('<span>', {
+								class: 'revisions-headers__author-name',
+								text: revision.author.name + ' '
+							}),
+							$('<span>', {
+								class: 'revisions-headers__author-role',
+								text: '(' + revision.author.role + ')'
+							})
+						]
+					}),
+
+					// Note
+					$('<div>', {
+						class: 'revisions-headers__note',
+						html: [
+							$('<span>', {
+								class: 'revisions-headers__note-caption',
+								text: 'Note: ' }),
+							$('<span>', {
+								html: [
+									$('<div>', {
+										class: 'revisions-headers__note-text',
+										text: revision.note + ' '
+									}),
+									// ~%~ [TODO] set and get based on field
+									// $('<div>', {
+									// 	class: 'revisions-headers__based-on',
+									// 	text: revision.author.role
+									// })
+								]
+							})
+						]
+					}),
+				]
+			});
+
+			// Set title class and text according to revision status
+			$revisionType = $('.revisions-headers__type', $header);
 			if (revision.current) {
 				$revisionType.addClass('revisions-headers__type--current')
-					.text('Current Published');
+					.text('Current Published ');
 			} else if (revision.pending) {
 				$revisionType.addClass('revisions-headers__type--pending')
-					.text('Pending');
+					.text('Pending ');
 			}
-			$revisionID.text(' Revision ID ' + revision.id);
-			$revisionInfo.append($revisionType).append($revisionID);
-			$header.append($revisionInfo);
 
 			return $header;
 		};
