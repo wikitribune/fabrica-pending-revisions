@@ -299,7 +299,7 @@ class Base extends Singleton {
 			if (!function_exists('acf_maybe_get')) { return; }
 			$meta = get_post_meta($revisionID);
 			foreach ($meta as $name => $value) {
-				$key = acf_maybe_get($meta, '_'. $name);
+				$key = acf_maybe_get($meta, '_' . $name);
 				if (!$key) { continue; }
 				$value = $value[0];
 				$key = $key[0];
