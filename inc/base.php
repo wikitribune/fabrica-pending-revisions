@@ -309,7 +309,7 @@ class Base extends Singleton {
 				add_filter('acf/prepare_field/key=' . $key, function($field) {
 					$revisionID = $_GET['fpr-edit'];
 					$revision = get_post($revisionID);
-					if (empty($revision)) { return; }
+					if (empty($revision)) { return $field; }
 					$field['value'] = get_field($field['key'], $revisionID);
 					return $field;
 				});
