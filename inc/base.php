@@ -45,6 +45,7 @@ class Base extends Singleton {
 		if (wp_doing_ajax()) { return; }
 
 		// Saving hooks
+		add_action('edit_form_top', array($this, 'cacheLastRevisionData'));
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
@@ -136,6 +137,39 @@ class Base extends Singleton {
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
 		update_post_meta($postArray['ID'], '_fpr_accepted_revision_id', $acceptedID);
+	}
+
+	// Cache last revision data in the post form, for subsequent conflict detection on save
+	public function cacheLastRevisionData($post) {
+
+		// Exit if some problem with the post
+		if (empty($post)) { return; }
+
+		// Exit for unsupported post types
+		if (!in_array($post->post_type, $this->postTypesSupported)) { return; }
+
+		// If a specific revision was requested for editing, use that as the last revision
+		$latestRevisionID = false;
+		if (isset($_GET['fpr-edit']) && is_numeric($_GET['fpr-edit'])) {
+			$revision = get_post($_GET['fpr-edit']);
+			if (!empty($revision) && $revision->post_parent == $post->ID) {
+				$latestRevisionID = $revision->ID;
+			}
+		}
+
+		// Otherwise use the last revision
+		if (!$latestRevisionID) {
+			$revision = $this->getLatestRevision($post->ID);;
+			if (!empty($revision)) {
+				$latestRevisionID = $revision->ID;
+			}
+		}
+
+		// Escape if still no revision found
+		if (!$latestRevisionID) { return; }
+
+		// Cache latest revision ID
+		echo '<input type="hidden" id="fpr_last_revision_id" name="_fpr_last_revision_id" value="' . $latestRevisionID . '">';
 	}
 
 	// Get user and posts permissions to determine whether or not post can be saved by current user
