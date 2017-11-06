@@ -30,10 +30,16 @@
 .revisions-headers {
 	display: flex;
 	clear: both;
-	margin: 3rem 0;
-	padding: 3rem 1rem;
+	margin: 2rem 0;
+	padding: 2rem 1rem;
 	border-top: 1px solid #ccc;
 	border-bottom: 1px solid #ccc;
+}
+
+.revisions.pinned .revisions-headers {
+	margin: 1.5rem 0 1rem;
+	padding: 0 1rem;
+	border: none;
 }
 
 .revisions-headers__from,
@@ -46,6 +52,13 @@
 .revisions-headers__author {
 	font-size: 1rem;
 }
+
+.revisions.pinned .revisions-headers__title,
+.revisions.pinned .revisions-headers__date,
+.revisions.pinned .revisions-headers__author {
+	font-size: inherit;
+}
+
 
 .revisions-headers__title {
 	font-weight: bold;
@@ -67,6 +80,10 @@
 .revisions-headers__date-long,
 .revisions-headers__author-role {
 	color: #808080;
+}
+
+.revisions.pinned .revisions-headers__note {
+	display: none;
 }
 
 .revisions-headers__note {
