@@ -18,6 +18,12 @@
 
 .revisions-controls {
 	height: auto;
+	min-height: 80px;
+}
+
+.revisions-tooltip {
+	top: -15px;
+	bottom: initial;
 }
 
 .revisions-headers {
