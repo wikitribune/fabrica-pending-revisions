@@ -45,6 +45,7 @@ class Base extends Singleton {
 		if (wp_doing_ajax()) { return; }
 
 		// Saving hooks
+		add_action('edit_form_top', array($this, 'cacheLastRevisionData'));
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
@@ -136,6 +137,39 @@ class Base extends Singleton {
 		// Set pointer to accepted revision
 		$acceptedID = $revision->ID;
 		update_post_meta($postArray['ID'], '_fpr_accepted_revision_id', $acceptedID);
+	}
+
+	// Cache last revision data in the post form, to save the 'based on revision X' meta value
+	public function cacheLastRevisionData($post) {
+
+		// Exit if some problem with the post
+		if (empty($post)) { return; }
+
+		// Exit for unsupported post types
+		if (!in_array($post->post_type, $this->postTypesSupported)) { return; }
+
+		// If a specific revision was requested for editing, use that as the last revision
+		$latestRevisionID = false;
+		if (isset($_GET['fpr-edit']) && is_numeric($_GET['fpr-edit'])) {
+			$revision = get_post($_GET['fpr-edit']);
+			if (!empty($revision) && $revision->post_parent == $post->ID) {
+				$latestRevisionID = $revision->ID;
+			}
+		}
+
+		// Otherwise use the last revision
+		if (!$latestRevisionID) {
+			$revision = $this->getLatestRevision($post->ID);;
+			if (!empty($revision)) {
+				$latestRevisionID = $revision->ID;
+			}
+		}
+
+		// Escape if still no revision found
+		if (!$latestRevisionID) { return; }
+
+		// Cache latest revision ID
+		echo '<input type="hidden" id="fpr_last_revision_id" name="_fpr_last_revision_id" value="' . $latestRevisionID . '">';
 	}
 
 	// Get user and posts permissions to determine whether or not post can be saved by current user
@@ -280,6 +314,39 @@ class Base extends Singleton {
 
 			if (!empty($this->notificationMessages)) {
 				add_action('admin_notices', array($this, 'showNotificationMessages'));
+			}
+
+			// If `fpr-edit` GET variable is set, preload a given revision's fields
+			if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
+			$revisionID = $_GET['fpr-edit'];
+			$revision = get_post($revisionID);
+			if (empty($revision) || $revision->post_parent != $postID) { return; }
+
+			// Set WP default values
+			global $post;
+			$post->post_title = $revision->post_title;
+			$post->post_content = $revision->post_content;
+			$post->post_excerpt = $revision->post_excerpt;
+
+			// Set ACF meta fields
+			// Adapted from the acf_copy_postmeta() function
+			if (!function_exists('acf_maybe_get')) { return; }
+			$meta = get_post_meta($revisionID);
+			foreach ($meta as $name => $value) {
+				$key = acf_maybe_get($meta, '_' . $name);
+				if (!$key) { continue; }
+				$value = $value[0];
+				$key = $key[0];
+				if (!acf_is_field_key($key)) { continue; }
+
+				// Show user's suggestion in editor
+				add_filter('acf/prepare_field/key=' . $key, function($field) {
+					$revisionID = $_GET['fpr-edit'];
+					$revision = get_post($revisionID);
+					if (empty($revision)) { return $field; }
+					$field['value'] = get_field($field['key'], $revisionID);
+					return $field;
+				});
 			}
 		} else if ($screen->base == 'edit') { // Post list page
 
