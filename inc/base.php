@@ -139,7 +139,7 @@ class Base extends Singleton {
 		update_post_meta($postArray['ID'], '_fpr_accepted_revision_id', $acceptedID);
 	}
 
-	// Cache last revision data in the post form, for subsequent conflict detection on save
+	// Cache last revision data in the post form, to save the 'based on revision X' meta value
 	public function cacheLastRevisionData($post) {
 
 		// Exit if some problem with the post
