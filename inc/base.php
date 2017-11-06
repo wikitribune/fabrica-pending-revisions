@@ -281,6 +281,39 @@ class Base extends Singleton {
 			if (!empty($this->notificationMessages)) {
 				add_action('admin_notices', array($this, 'showNotificationMessages'));
 			}
+
+			// If `fpr-edit` GET variable is set, preload a given revision's fields
+			if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
+			$revisionID = $_GET['fpr-edit'];
+			$revision = get_post($revisionID);
+			if (empty($revision)) { return; }
+
+			// Set WP default values
+			global $post;
+			$post->post_title = $revision->post_title;
+			$post->post_content = $revision->post_content;
+			$post->post_excerpt = $revision->post_excerpt;
+
+			// Set ACF meta fields
+			// Adapted from the acf_copy_postmeta() function
+			if (!function_exists('acf_maybe_get')) { return; }
+			$meta = get_post_meta($revisionID);
+			foreach ($meta as $name => $value) {
+				$key = acf_maybe_get($meta, '_'. $name);
+				if (!$key) { continue; }
+				$value = $value[0];
+				$key = $key[0];
+				if (!acf_is_field_key($key)) { continue; }
+
+				// Show user's suggestion in editor
+				add_filter('acf/prepare_field/key=' . $key, function($field) {
+					$revisionID = $_GET['fpr-edit'];
+					$revision = get_post($revisionID);
+					if (empty($revision)) { return; }
+					$field['value'] = get_field($field['key'], $revisionID);
+					return $field;
+				});
+			}
 		} else if ($screen->base == 'edit') { // Post list page
 
 			// Add hooks to add pending revisions column to post list for all enabled post types
@@ -293,38 +326,6 @@ class Base extends Singleton {
 			add_action("manage_{$postTypeString}_columns", array($this, 'addPendingColumn'));
 			add_action("manage_{$postTypeString}_custom_column", array($this, 'getPendingColumnContent'), 10, 2);
 			add_action("manage_{$screen->id}_sortable_columns", array($this, 'sortablePendingColumn'));
-		}
-
-		// If `fpr-edit` GET variable is set, preload a given revision's fields
-		if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
-		$revisionID = $_GET['fpr-edit'];
-		$revision = get_post($revisionID);
-		if (empty($revision)) { return; }
-
-		// Set WP default values
-		global $post;
-		$post->post_title = $revision->post_title;
-		$post->post_content = $revision->post_content;
-		$post->post_excerpt = $revision->post_excerpt;
-
-		// Set ACF meta fields
-		// Adapted from the acf_copy_postmeta() function
-		$meta = get_post_meta($revisionID);
-		foreach ($meta as $name => $value) {
-			$key = acf_maybe_get($meta, '_'. $name);
-			if (!$key) { continue; }
-			$value = $value[0];
-			$key = $key[0];
-			if (!acf_is_field_key($key)) { continue; }
-
-			// Show user's suggestion in editor
-			add_filter('acf/prepare_field/key=' . $key, function($field) {
-				$revisionID = $_GET['fpr-edit'];
-				$revision = get_post($revisionID);
-				if (empty($revision)) { return; }
-				$field['value'] = get_field($field['key'], $revisionID);
-				return $field;
-			});
 		}
 	}
 
