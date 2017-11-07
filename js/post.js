@@ -3,20 +3,11 @@
 
 		// Update Publish metabox revisions info not to include autosave revisions
 		var $browseRevisionsLink = $('.misc-pub-revisions a'),
-			browseRevisionsLinkParts = $browseRevisionsLink.attr('href').split('revision='),
 			$revisionsCount = $('.misc-pub-revisions b').text(fprData.revisionsCount);
 		if (fprData.pendingCount && parseInt(fprData.pendingCount) > 0) {
 			$revisionsCount.after($('<span>', {text: ' (' + fprData.pendingCount + ' pending)'}));
 		}
-		if (browseRevisionsLinkParts.length > 1) {
-			var linkRevisionID = browseRevisionsLinkParts[1];
-			if (fprData.latestRevisionID && linkRevisionID != fprData.latestRevisionID) {
-
-				// Change link to the latest non-autosave revision
-				var newBrowseRevisionsLink = $browseRevisionsLink.attr('href').replace('=' + linkRevisionID, '=' + fprData.latestRevisionID);
-				$browseRevisionsLink.attr('href', newBrowseRevisionsLink);
-			}
-		}
+		$browseRevisionsLink.attr('href', fprData.urls.revisions);
 
 		// Handle permissions metabox saving
 		var $button = $('.fpr-editing-mode__button button');
@@ -33,7 +24,7 @@
 			};
 			$.ajax({
 				type: 'POST',
-				url: fprData.url,
+				url: fprData.urls.ajax,
 				context: this,
 				dataType: 'html',
 				data: data,

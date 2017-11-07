@@ -616,9 +616,14 @@ class Base extends Singleton {
 		);
 		$revisions = $this->getNonAutosaveRevisions($post->ID, $args);
 		$revisionsCount = count($revisions);
+		$latestRevision = current($revisions);
 		$pendingCount = false;
+		$revisionsUrl = admin_url('revision.php?revision=' . $latestRevision->ID);
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
 		if ($acceptedID) {
+			if ($acceptedID != $latestRevision->ID) {
+				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $latestRevision->ID);
+			}
 			$pendingCount = 0;
 			foreach ($revisions as $revision) {
 				if ($revision->ID == $acceptedID) { break; }
@@ -628,15 +633,18 @@ class Base extends Singleton {
 
 		// Data to pass to Post's Javascript
 		$editingMode = $this->getEditingMode($post->ID);
-		$latestRevision = $this->getLatestRevision($post->ID);
 		return array(
 			'post' => $post,
 			'editingMode' => $editingMode,
 			'revisionsCount' => $revisionsCount,
 			'pendingCount' => $pendingCount,
+			'acceptedID' => $acceptedID,
 			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
-			'url' => admin_url('admin-ajax.php')
+			'urls' => array(
+				'revisions' => $revisionsUrl,
+				'ajax' => admin_url('admin-ajax.php')
+			)
 		);
 	}
 

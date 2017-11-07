@@ -17,12 +17,14 @@
 }
 
 .revisions-controls,
+.comparing-two-revisions .revisions-controls,
 .revisions.pinned .revisions-controls {
 	height: auto;
 	min-height: 80px;
 }
 
-.revisions-tooltip {
+.revisions-tooltip,
+.comparing-two-revisions .revisions-tooltip {
 	top: -15px;
 	bottom: initial;
 }

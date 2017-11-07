@@ -144,6 +144,7 @@
 			if (!values || values.length <= 0) {
 				values = [value - 1, value];
 			}
+			if (values[0] == values[1] || values[0] < 0) { return; }
 
 			var $headerFrom = renderColumnHeader('from', revisionData[values[0]]),
 				$headerTo = renderColumnHeader('to', revisionData[values[1]]);
