@@ -594,9 +594,9 @@ class Base extends Singleton {
 		}
 
 		// Revision on which this one is based
-		$sourceRevisionID = get_metadata('post', $revision->ID, '_fpr_accepted_revision_id', true);
+		$sourceRevisionID = get_post_meta($revision->ID, '_fpr_source_revision_id', true);
 		if ($sourceRevisionID) {
-			$revisionData['sourceRevisionID'] = $sourceRevisionID;
+			$revisionsData['sourceRevisionID'] = $sourceRevisionID;
 		}
 
 		return $revisionsData;

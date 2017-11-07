@@ -105,16 +105,20 @@
 						html: [
 							((!revision.note) ? null : $('<span>', {
 								class: 'revisions-headers__note-caption',
-								text: 'Note: ' })),
+								text: 'Note: '
+							})),
 							$('<span>', {
 								html: [
 									((!revision.note) ? null : $('<div>', {
 										class: 'revisions-headers__note-text',
-										text: revision.note + ' '
+										html: revision.note + ' ' // Set on `html` to decode possible HTML entities
 									})),
 									((!revision.sourceRevisionID) ? null : $('<div>', {
 										class: 'revisions-headers__based-on',
-										text: revision.author.role
+										html: [
+											$('<span>', { text: 'based on Revision '}),
+											$('<span>', { text: revision.sourceRevisionID})
+										]
 									}))
 								]
 							})
