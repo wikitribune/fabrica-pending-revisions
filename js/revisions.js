@@ -59,7 +59,7 @@
 					$('<div>', {
 						class: 'revisions-headers__title',
 						html: [
-							$('<span>', { class: 'revisions-headers__type' }),
+							$('<span>', {class: 'revisions-headers__type'}),
 							$('<span>', {
 								class: 'revisions-headers__id',
 								text: 'Revision ID ' + revision.id
@@ -71,7 +71,7 @@
 					$('<div>', {
 						class: 'revisions-headers__date',
 						html: [
-							$('<span>', { text: 'submitted ' }),
+							$('<span>', {text: 'submitted '}),
 							$('<span>', {
 								class: 'revisions-headers__date-ago',
 								text: revision.timeAgo + ' '
@@ -87,7 +87,7 @@
 					$('<div>', {
 						class: 'revisions-headers__author',
 						html: [
-							$('<span>', { text: 'by ' }),
+							$('<span>', {text: 'by '}),
 							$('<span>', {
 								class: 'revisions-headers__author-name',
 								text: revision.author.name + ' '
@@ -116,14 +116,41 @@
 									((!revision.sourceRevisionID) ? null : $('<div>', {
 										class: 'revisions-headers__based-on',
 										html: [
-											$('<span>', { text: 'based on Revision '}),
-											$('<span>', { text: revision.sourceRevisionID})
+											$('<span>', {text: 'based on Revision '}),
+											$('<span>', {text: revision.sourceRevisionID})
 										]
 									}))
 								]
 							})
 						]
 					})),
+
+					// Buttons
+					$('<div>', {
+						class: 'revisions-buttons',
+						html: [
+							$('<input>', {
+								type: 'button',
+								value: 'Edit',
+								class: 'revisions-buttons__button revisions-buttons__button--edit',
+							}),
+							$('<input>', {
+								type: 'button',
+								value: 'Preview',
+								class: 'revisions-buttons__button revisions-buttons__button--preview',
+							}),
+							$('<input>', {
+								type: 'button',
+								value: 'Restore',
+								class: 'revisions-buttons__button revisions-buttons__button--restore',
+							}),
+							$('<input>', {
+								type: 'button',
+								value: 'Publish',
+								class: 'revisions-buttons__button revisions-buttons__button--publish',
+							}),
+						]
+					})
 				]
 			});
 
@@ -137,10 +164,33 @@
 					.text('Pending ');
 			}
 
+			var $editButton = $('.revisions-buttons__button--edit', $header),
+				$previewButton = $('.revisions-buttons__button--preview', $header),
+				$restoreButton = $('.revisions-buttons__button--restore', $header),
+				$publishButton = $('.revisions-buttons__button--publish', $header);
+
+			// Buttons enabling and disabling
+			var latestRevision = revisionData[revisionData.length - 1];
+			if (revision == latestRevision) {
+				$restoreButton.attr('disabled', true);
+				$restoreButton.addClass('revisions-buttons__button--disabled');
+			}
+			if (!revision.pending) {
+				$publishButton.hide();
+			} else if (revision.current) {
+				$publishButton.attr('disabled', true);
+				$publishButton.addClass('revisions-buttons__button--disabled');
+			}
+
+			// Buttons actions
+			$editButton.click(function() { document.location = revision.editUrl; });
+			$previewButton.click(function() { document.location = revision.previewUrl; });
+			$restoreButton.click(function() { document.location = revision.restoreUrl; });
+			$publishButton.click(function() { document.location = revision.publishUrl; });
+
 			return $header;
 		};
 		var renderColumnHeaders = function(value, values) {
-			var latestRevision = revisionData.length - 1;
 			if (!values || values.length <= 0) {
 				values = [value - 1, value];
 			}

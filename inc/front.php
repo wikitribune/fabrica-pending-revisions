@@ -19,7 +19,12 @@ class Front extends Singleton {
 
 	// Replace content with post's accepted revision content
 	public function filterAcceptedRevisionContent($content) {
-		if (is_preview()) { return $content; }
+		if (is_preview()) {
+			if (!isset($_GET['fpr-preview']) || !is_numeric($_GET['fpr-preview'])) { return $content; }
+
+			// Get a specific revision to be previewed
+			return get_post_field('post_content', $_GET['fpr-preview']);
+		}
 		$postID = get_the_ID();
 		if (empty($postID) || !in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $content; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
@@ -30,7 +35,12 @@ class Front extends Singleton {
 
 	// Replace excerpt with post's accepted revision excerpt
 	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
-		if (is_preview()) { return $excerpt; }
+		if (is_preview()) {
+			if (!isset($_GET['fpr-preview']) || !is_numeric($_GET['fpr-preview'])) { return $excerpt; }
+
+			// Get a specific revision to be previewed
+			return get_post_field('post_excerpt', $_GET['fpr-preview']);
+		}
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $excerpt; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $excerpt; }
@@ -40,7 +50,12 @@ class Front extends Singleton {
 
 	// Replace title with post's accepted revision title
 	public function filterAcceptedRevisionTitle($title, $post) {
-		if (is_preview()) { return $title; }
+		if (is_preview()) {
+			if (!isset($_GET['fpr-preview']) || !is_numeric($_GET['fpr-preview'])) { return $title; }
+
+			// Get a specific revision to be previewed
+			return get_post_field('post_title', $_GET['fpr-preview']);
+		}
 		$postID = is_object($post) ? $post->ID : $post;
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $title; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
@@ -51,7 +66,12 @@ class Front extends Singleton {
 
 	// Replace custom fields' data with post's accepted revision custom fields' data
 	public function filterAcceptedRevisionField($value, $postID, $field) {
-		if (is_preview()) { return $value; }
+		if (is_preview()) {
+			if (!isset($_GET['fpr-preview']) || !is_numeric($_GET['fpr-preview'])) { return $value; }
+
+			// Get a specific revision to be previewed
+			return get_field($field['name'], $_GET['fpr-preview']);
+		}
 		if (!function_exists('get_field')) { return $value; }
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes()) || $field['name'] == 'accepted_revision_id') { return $value; }
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);

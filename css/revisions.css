@@ -46,6 +46,9 @@
 
 .revisions-headers__from,
 .revisions-headers__to {
+	position: relative;
+	display: flex;
+	flex-direction: column;
 	width: 50%;
 }
 
@@ -97,4 +100,55 @@
 .revisions-headers__note-caption {
 	margin-right: 0.375rem;
 	font-weight: bold;
+}
+
+.revisions-buttons {
+	display: flex;
+	max-width: 400px;
+	margin-top: auto;
+	margin-right: 2rem;
+	padding-top: 1rem;
+}
+
+.revisions.pinned .revisions-buttons {
+	display: none;
+}
+
+.revisions-buttons__button {
+	width: 25%;
+	height: auto;
+	margin-right: 0.75rem;
+	padding: 0.5rem;
+	border-radius: 0;
+	border: 1px solid #808080;
+	background-color: transparent;
+	color: #666;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	cursor: pointer;
+}
+
+.revisions-buttons__button:active {
+	box-shadow: 2px 2px rgba(128, 128, 128, 0.40) inset;
+}
+
+.revisions-buttons__button.revisions-buttons__button--restore {
+	border-color: #46b450;
+	color: #46b450;
+}
+
+.revisions-buttons__button.revisions-buttons__button--publish {
+	border-color: #46b450;
+	background-color: #46b450;
+	color: white;
+}
+
+.revisions-buttons__button.revisions-buttons__button--disabled {
+	color: #999;
+	cursor: default;
+}
+
+.revisions-buttons__button.revisions-buttons__button--publish.revisions-buttons__button.revisions-buttons__button--disabled {
+	background-color: #999;
+	color: white;
 }

@@ -304,6 +304,57 @@ class Base extends Singleton {
 		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
 
+	// If `fpr-publish` GET variable is set, publish a given revision (ie. set it as the accepted revision)
+	private function initPublishRevision($postID) {
+		if (empty($_GET['fpr-publish']) || !is_numeric($_GET['fpr-publish']) || !current_user_can('accept_revisions')) { return ''; }
+		$revisionID = $_GET['fpr-publish'];
+		$revision = get_post($revisionID);
+		if (empty($revision) || $revision->post_parent != $postID) { return ''; }
+
+		check_admin_referer("fpr-publish-post_{$revisionID}");
+
+		// Set the accepted ID to point to the revision
+		update_post_meta($postID, '_fpr_accepted_revision_id', $revisionID);
+
+		$settings = Settings::instance()->getSettings();
+		return '<p>' . sprintf(__($settings['revision_published_notification_message'], self::DOMAIN), $revisionID, get_permalink($postID)) . '</p>';
+	}
+
+	// If `fpr-edit` GET variable is set, preload a given revision's fields
+	private function initEditRevision($postID) {
+		if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
+		$revisionID = $_GET['fpr-edit'];
+		$revision = get_post($revisionID);
+		if (empty($revision) || $revision->post_parent != $postID) { return; }
+
+		// Set WP default values
+		global $post;
+		$post->post_title = $revision->post_title;
+		$post->post_content = $revision->post_content;
+		$post->post_excerpt = $revision->post_excerpt;
+
+		// Set ACF meta fields
+		// Adapted from the acf_copy_postmeta() function
+		if (!function_exists('acf_maybe_get')) { return; }
+		$meta = get_post_meta($revisionID);
+		foreach ($meta as $name => $value) {
+			$key = acf_maybe_get($meta, '_' . $name);
+			if (!$key) { continue; }
+			$value = $value[0];
+			$key = $key[0];
+			if (!acf_is_field_key($key)) { continue; }
+
+			// Show user's suggestion in editor
+			add_filter('acf/prepare_field/key=' . $key, function($field) {
+				$revisionID = $_GET['fpr-edit'];
+				$revision = get_post($revisionID);
+				if (empty($revision)) { return $field; }
+				$field['value'] = get_field($field['key'], $revisionID);
+				return $field;
+			});
+		}
+	}
+
 	// Initialise page
 	public function initPostEdit() {
 		$screen = get_current_screen();
@@ -312,46 +363,23 @@ class Base extends Singleton {
 		if ($screen->base == 'post') { // Edit post page
 			$postID = get_the_ID();
 			if (empty($postID)) { return; }
+			$this->notificationMessages = '';
+
+			// Publish a given revision if `fpr-publish` GET variable is set
+			if (!empty($_GET['fpr-publish'])) {
+				$this->notificationMessages .= $this->initPublishRevision($postID);
+			}
 
 			// Get and show notification messages
-			$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
+			$this->notificationMessages .= $this->getEditingModeNotificationMessage($postID);
 			$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
-
 			if (!empty($this->notificationMessages)) {
 				add_action('admin_notices', array($this, 'showNotificationMessages'));
 			}
 
-			// If `fpr-edit` GET variable is set, preload a given revision's fields
-			if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
-			$revisionID = $_GET['fpr-edit'];
-			$revision = get_post($revisionID);
-			if (empty($revision) || $revision->post_parent != $postID) { return; }
-
-			// Set WP default values
-			global $post;
-			$post->post_title = $revision->post_title;
-			$post->post_content = $revision->post_content;
-			$post->post_excerpt = $revision->post_excerpt;
-
-			// Set ACF meta fields
-			// Adapted from the acf_copy_postmeta() function
-			if (!function_exists('acf_maybe_get')) { return; }
-			$meta = get_post_meta($revisionID);
-			foreach ($meta as $name => $value) {
-				$key = acf_maybe_get($meta, '_' . $name);
-				if (!$key) { continue; }
-				$value = $value[0];
-				$key = $key[0];
-				if (!acf_is_field_key($key)) { continue; }
-
-				// Show user's suggestion in editor
-				add_filter('acf/prepare_field/key=' . $key, function($field) {
-					$revisionID = $_GET['fpr-edit'];
-					$revision = get_post($revisionID);
-					if (empty($revision)) { return $field; }
-					$field['value'] = get_field($field['key'], $revisionID);
-					return $field;
-				});
+			// Edit a given revision if `fpr-edit` GET variable is set
+			if (!empty($_GET['fpr-edit'])) {
+				$this->initEditRevision($postID);
 			}
 		} else if ($screen->base == 'edit') { // Post list page
 
@@ -598,6 +626,14 @@ class Base extends Singleton {
 		if ($sourceRevisionID) {
 			$revisionsData['sourceRevisionID'] = $sourceRevisionID;
 		}
+
+		// Buttons URLs
+		$revisionsData['editUrl'] = admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}");
+		$revisionsData['previewUrl'] = get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID));
+		$revisionsData['publishUrl'] = str_replace('&amp;', '&', wp_nonce_url(
+			admin_url("post.php?post={$post->ID}&action=edit&fpr-publish={$revision->ID}"),
+			"fpr-publish-post_{$revision->ID}"
+		));
 
 		return $revisionsData;
 	}
