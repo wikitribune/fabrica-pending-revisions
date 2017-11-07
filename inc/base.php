@@ -617,12 +617,13 @@ class Base extends Singleton {
 		$revisions = $this->getNonAutosaveRevisions($post->ID, $args);
 		$revisionsCount = count($revisions);
 		$latestRevision = current($revisions);
+		$toRevision = isset($_GET['fpr-edit']) ? $_GET['fpr-edit'] : $latestRevision->ID;
 		$pendingCount = false;
-		$revisionsUrl = admin_url('revision.php?revision=' . $latestRevision->ID);
+		$revisionsUrl = admin_url('revision.php?revision=' . $toRevision);
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
 		if ($acceptedID) {
 			if ($acceptedID != $latestRevision->ID) {
-				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $latestRevision->ID);
+				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $toRevision);
 			}
 			$pendingCount = 0;
 			foreach ($revisions as $revision) {
