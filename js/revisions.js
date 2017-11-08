@@ -147,7 +147,7 @@
 					value: revision.current ? 'View' : 'Preview',
 					class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--preview',
 				}));
-				if (revision.pending && revision.userCanAccept) {
+				if (!revision.current && revision.userCanAccept) {
 					$buttons.append( $('<input>', {
 						type: 'button',
 						value: 'Publish',
@@ -189,7 +189,7 @@
 				$publishButton = $('.fpr-revisions-buttons__button--publish', $header);
 
 			// Buttons actions
-			$retrieveButton.click(function() { document.location = revision.urls.retrieve; });
+			$retrieveButton.click(function() { document.location = revision.urls.edit; });
 			$editButton.click(function() { document.location = revision.urls.edit; });
 			$previewButton.click(function() { document.location = revision.urls.preview; });
 			$publishButton.click(function(event) {

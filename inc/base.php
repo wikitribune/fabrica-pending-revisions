@@ -328,10 +328,13 @@ class Base extends Singleton {
 
 	// If `fpr-edit` GET variable is set, preload a given revision's fields
 	private function initEditRevision($postID) {
-		if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
+		if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit'])) { return; }
 		$revisionID = $_GET['fpr-edit'];
 		$revision = wp_get_post_revision($revisionID);
 		if (empty($revision) || $revision->post_parent != $postID) { return; }
+
+		// User can only edit if they have sufficient permissions or revision's their own autosave
+		if (!current_user_can('accept_revisions') && (!wp_is_post_autosave($revisionID) || $revision->post_author != get_current_user())) { return; }
 
 		// Set WP default values
 		global $post;
@@ -630,7 +633,6 @@ class Base extends Singleton {
 
 		// Buttons URLs
 		$revisionData['urls'] = array(
-			'retrieve' => $revisionData['restoreUrl'],
 			'edit' => admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}"),
 			'preview' => get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID)),
 			'ajax' => admin_url('admin-ajax.php')
