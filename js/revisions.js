@@ -129,34 +129,45 @@
 							})
 						]
 					})),
-
-					// Buttons
-					$('<div>', {
-						class: 'fpr-revisions-buttons',
-						html: [
-							$('<input>', {
-								type: 'button',
-								value: 'Edit',
-								class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--edit',
-							}),
-							$('<input>', {
-								type: 'button',
-								value: revision.current ? 'View' : 'Preview',
-								class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--preview',
-							}),
-							(!revision.pending ? null : $('<input>', {
-								type: 'button',
-								value: 'Publish',
-								class: 'button button-primary fpr-revisions-buttons__button fpr-revisions-buttons__button--publish',
-							})),
-							(!revision.notice ? null : $('<span>', {
-								class: 'fpr-revisions-headers__published-notice ' + (revision.notice.success ? 'fpr-revisions-headers__published-notice--success' : 'fpr-revisions-headers__published-notice--error'),
-								text: revision.notice.message
-							}))
-						]
-					})
 				]
 			});
+
+			// Buttons
+			$buttons = $('<div>', { class: 'fpr-revisions-buttons' });
+			if (!revision.autosave) {
+				if (revision.userCanAccept) {
+					$buttons.append($('<input>', {
+						type: 'button',
+						value: 'Edit',
+						class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--edit',
+					}));
+				}
+				$buttons.append($('<input>', {
+					type: 'button',
+					value: revision.current ? 'View' : 'Preview',
+					class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--preview',
+				}));
+				if (revision.pending && revision.userCanAccept) {
+					$buttons.append( $('<input>', {
+						type: 'button',
+						value: 'Publish',
+						class: 'button button-primary fpr-revisions-buttons__button fpr-revisions-buttons__button--publish',
+					}));
+				}
+				if (revision.notice) {
+					$buttons.append($('<span>', {
+						class: 'fpr-revisions-headers__published-notice ' + (revision.notice.success ? 'fpr-revisions-headers__published-notice--success' : 'fpr-revisions-headers__published-notice--error'),
+						text: revision.notice.message
+					}));
+				}
+			} else if (revision.author.current) {
+				$buttons.append($('<input>', {
+					type: 'button',
+					value: 'Retrieve',
+					class: 'button button-primary fpr-revisions-buttons__button fpr-revisions-buttons__button--retrieve',
+				}));
+			}
+			$header.append($buttons);
 			revision.notice = false;
 
 			// Set title class and text according to revision status
@@ -164,16 +175,21 @@
 			if (revision.current) {
 				$revisionType.addClass('fpr-revisions-headers__type--current')
 					.text('Current Published ');
-			} else if (revision.pending) {
+			} else if (revision.pending && !revision.autosave) {
 				$revisionType.addClass('fpr-revisions-headers__type--pending')
 					.text('Pending ');
+			} else if (revision.autosave) {
+				$revisionType.addClass('fpr-revisions-headers__type--autosave')
+					.text('Autosave ');
 			}
 
-			var $editButton = $('.fpr-revisions-buttons__button--edit', $header),
+			var $retrieveButton = $('.fpr-revisions-buttons__button--retrieve', $header),
+				$editButton = $('.fpr-revisions-buttons__button--edit', $header),
 				$previewButton = $('.fpr-revisions-buttons__button--preview', $header),
 				$publishButton = $('.fpr-revisions-buttons__button--publish', $header);
 
 			// Buttons actions
+			$retrieveButton.click(function() { document.location = revision.urls.retrieve; });
 			$editButton.click(function() { document.location = revision.urls.edit; });
 			$previewButton.click(function() { document.location = revision.urls.preview; });
 			$publishButton.click(function(event) {
@@ -194,7 +210,7 @@
 				}).done(function(response) {
 					$('html').removeClass('fpr-util-wait');
 					if (response.success) {
-						
+
 						// Update revisions data and re-render tickmarks and headers
 						revision.pending = false;
 						revision.current = true;

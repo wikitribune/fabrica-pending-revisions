@@ -11,6 +11,10 @@
 	display: none;
 }
 
+.fpr-autosave-revision .revisions-controls {
+	padding-top: 0;
+}
+
 /* Column headers */
 .revisions-meta {
 	display: none;
@@ -75,6 +79,10 @@
 
 .fpr-revisions-headers__type--pending {
 	color: #359dd9;
+}
+
+.fpr-revisions-headers__type--autosave {
+	color: #a00;
 }
 
 .fpr-revisions-headers__date-ago,

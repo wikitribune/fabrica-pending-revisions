@@ -610,6 +610,7 @@ class Base extends Singleton {
 		$author = get_userdata($revision->post_author);
 		$authorRole = $author->roles[0];
 		$revisionData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
+		$revisionData['author']['current'] = $revision->post_author == get_current_user_id();
 
 		// Revision note (if available)
 		$revisionData['note'] = '';
@@ -629,11 +630,13 @@ class Base extends Singleton {
 
 		// Buttons URLs
 		$revisionData['urls'] = array(
+			'retrieve' => $revisionData['restoreUrl'],
 			'edit' => admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}"),
 			'preview' => get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID)),
 			'ajax' => admin_url('admin-ajax.php')
 		);
 		$revisionData['nonce'] = wp_create_nonce("fpr-publish-post_{$revision->ID}");
+		$revisionData['userCanAccept'] = current_user_can('accept_revisions', $revision->ID);
 
 		return $revisionData;
 	}
