@@ -212,23 +212,22 @@
 					if (response.success) {
 
 						// Update revisions data and re-render tickmarks and headers
-						revision.pending = false;
-						revision.current = true;
-						revision.notice = {
-							success: true,
-							message: 'Published'
-						}
-						if (revisionModels[revisionIndex]) {
-							revisionModels[revisionIndex].attributes.pending = false;
-							revisionModels[revisionIndex].attributes.current = false;
-						}
-						for (var i = revisionIndex - 1; i >= 0; i--) {
-							if (!revisionData[i] || (!revisionData[i].pending && !revisionData[i].current)) { break; }
+						for (var i = 0; i < revisionData.length; i++) {
+							if (!revisionData[i]) { continue; }
 							revisionData[i].pending = false;
 							revisionData[i].current = false;
+							if (i > revisionIndex) {
+								revisionData[i].pending = true;
+							} else if (i == revisionIndex) {
+								revisionData[i].current = true;
+								revisionData[i].notice = {
+									success: true,
+									message: 'Published'
+								}
+							}
 							if (revisionModels[i]) {
-								revisionModels[i].attributes.pending = false;
-								revisionModels[i].attributes.current = false;
+								revisionModels[i].attributes.pending = revisionData[i].pending;
+								revisionModels[i].attributes.current = revisionData[i].current;
 							}
 						}
 						renderMarks(revisionIndex);
