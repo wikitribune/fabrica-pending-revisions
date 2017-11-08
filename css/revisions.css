@@ -29,7 +29,7 @@
 	bottom: initial;
 }
 
-.revisions-headers {
+.fpr-revisions-headers {
 	display: flex;
 	clear: both;
 	margin: 2rem 0;
@@ -38,71 +38,71 @@
 	border-bottom: 1px solid #ccc;
 }
 
-.revisions.pinned .revisions-headers {
+.revisions.pinned .fpr-revisions-headers {
 	margin: 1.5rem 0 1rem;
 	padding: 0 1rem;
 	border: none;
 }
 
-.revisions-headers__from,
-.revisions-headers__to {
+.fpr-revisions-headers__from,
+.fpr-revisions-headers__to {
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	width: 50%;
 }
 
-.revisions-headers__title,
-.revisions-headers__date,
-.revisions-headers__author {
+.fpr-revisions-headers__title,
+.fpr-revisions-headers__date,
+.fpr-revisions-headers__author {
 	font-size: 1rem;
 }
 
-.revisions.pinned .revisions-headers__title,
-.revisions.pinned .revisions-headers__date,
-.revisions.pinned .revisions-headers__author {
+.revisions.pinned .fpr-revisions-headers__title,
+.revisions.pinned .fpr-revisions-headers__date,
+.revisions.pinned .fpr-revisions-headers__author {
 	font-size: inherit;
 }
 
 
-.revisions-headers__title {
+.fpr-revisions-headers__title {
 	font-weight: bold;
 }
 
-.revisions-headers__type--current {
+.fpr-revisions-headers__type--current {
 	color: #46b450;
 }
 
-.revisions-headers__type--pending {
+.fpr-revisions-headers__type--pending {
 	color: #359dd9;
 }
 
-.revisions-headers__date-ago,
-.revisions-headers__author-name {
+.fpr-revisions-headers__date-ago,
+.fpr-revisions-headers__author-name {
 	font-weight: bold;
 }
 
-.revisions-headers__date-long,
-.revisions-headers__author-role {
+.fpr-revisions-headers__date-long,
+.fpr-revisions-headers__author-role {
 	color: #808080;
 }
 
-.revisions.pinned .revisions-headers__note {
+.revisions.pinned .fpr-revisions-headers__note {
 	display: none;
 }
 
-.revisions-headers__note {
+.fpr-revisions-headers__note {
 	display: flex;
 	margin-top: 1rem;
 	color: #808080;
 }
 
-.revisions-headers__note-caption {
+.fpr-revisions-headers__note-caption {
 	margin-right: 0.375rem;
 	font-weight: bold;
 }
 
-.revisions-buttons {
+.fpr-revisions-buttons {
 	display: flex;
 	max-width: 400px;
 	margin-top: auto;
@@ -110,45 +110,23 @@
 	padding-top: 1rem;
 }
 
-.revisions.pinned .revisions-buttons {
+.revisions.pinned .fpr-revisions-buttons {
 	display: none;
 }
 
-.revisions-buttons__button {
-	width: 25%;
-	height: auto;
-	margin-right: 0.75rem;
-	padding: 0.5rem;
-	border-radius: 0;
-	border: 1px solid #808080;
-	background-color: transparent;
-	color: #666;
-	font-size: 0.8125rem;
-	font-weight: bold;
-	cursor: pointer;
+.wp-core-ui .fpr-revisions-buttons__button {
+	margin-right: 0.5rem;
 }
 
-.revisions-buttons__button:active {
-	box-shadow: 2px 2px rgba(128, 128, 128, 0.40) inset;
+.fpr-revisions-headers__published-notice {
+	margin-top: auto;
+	margin-bottom: auto;
 }
 
-.revisions-buttons__button.revisions-buttons__button--restore {
-	border-color: #46b450;
+.fpr-revisions-headers__published-notice--success {
 	color: #46b450;
 }
 
-.revisions-buttons__button.revisions-buttons__button--publish {
-	border-color: #46b450;
-	background-color: #46b450;
-	color: white;
-}
-
-.revisions-buttons__button.revisions-buttons__button--disabled {
-	color: #999;
-	cursor: default;
-}
-
-.revisions-buttons__button.revisions-buttons__button--publish.revisions-buttons__button.revisions-buttons__button--disabled {
-	background-color: #999;
-	color: white;
+.fpr-revisions-headers__published-notice--error {
+	color: #a00;
 }

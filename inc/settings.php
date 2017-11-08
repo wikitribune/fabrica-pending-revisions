@@ -26,7 +26,6 @@ class Settings extends Singleton {
 		$this->settings['revision_not_accepted_editors_notification_message'] = isset($this->settings['revision_not_accepted_editors_notification_message']) ? $this->settings['revision_not_accepted_editors_notification_message'] : 'You are seeing suggested changes to this Story which are pending approval by an Editor. <a href="%s">Compare the published and pending versions</a>';
 		$this->settings['edits_require_approval_notification_message'] = isset($this->settings['edits_require_approval_notification_message']) ? $this->settings['edits_require_approval_notification_message'] : 'Changes to this %s require the approval of an editor before they will be made public.';
 		$this->settings['post_locked_notification_message'] = isset($this->settings['post_locked_notification_message']) ? $this->settings['post_locked_notification_message'] : 'This %1$s is currently locked and cannot be edited; please try again later. In the meantime you can use the <a href="%2$s#talk">Talk page</a> to discuss its contents.';
-		$this->settings['revision_published_notification_message'] = isset($this->settings['revision_published_notification_message']) ? $this->settings['revision_published_notification_message'] : 'Revision ID %1$s has been successfully published. <a href="%2$s">View the published article</a>';
 
 		return $this->settings;
 	}
@@ -167,18 +166,6 @@ class Settings extends Singleton {
 				'note' => __('Use <code>%1$s</code> for post type name and <code>%2$s</code> for post permalink.'),
 			) // Callback arguments
 		);
-
-		add_settings_field(
-			'revision_published_notification_message', // ID
-			__('Pending revision published', Base::DOMAIN), // Title
-			array($this, 'renderNotificationMessageSetting'), // Callback
-			'fpr-settings', // Page
-			'notifications_messages', // Section
-			array(
-				'notificationMessage' => 'revision_published_notification_message',
-				'note' => __('Use <code>%1$s</code> for accepted (published) revision ID and code>%2$s</code> for post permalink.'),
-			) // Callback arguments
-		);
 	}
 
 	// Header for default settings section
@@ -245,7 +232,6 @@ class Settings extends Singleton {
 			'revision_not_accepted_editors_notification_message',
 			'edits_require_approval_notification_message',
 			'post_locked_notification_message',
-			'revision_published_notification_message',
 		);
 		foreach ($fieldNames as $fieldName) {
 			if (isset($input[$fieldName])) {

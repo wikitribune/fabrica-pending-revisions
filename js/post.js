@@ -15,24 +15,34 @@
 			$button.attr('disabled', true);
 			$('html').addClass('fpr-util-wait');
 			$('.fpr-editing-mode__saved-notice').remove();
-			var data = {
-				action: 'fpr-editing-mode-save',
-				data: {
-					postID: fprData.post.ID,
-					editingMode: $('input[name="fpr-editing-mode"]:checked').val()
-				}
-			};
 			$.ajax({
 				type: 'POST',
 				url: fprData.urls.ajax,
 				context: this,
-				dataType: 'html',
-				data: data,
-				complete: function(data) {
-					$button.attr('disabled', false);
-					$('html').removeClass('fpr-util-wait');
+				data: {
+					action: 'fpr-editing-mode-save',
+					security: fprData.nonce,
+					data: {
+						postID: fprData.post.ID,
+						editingMode: $('input[name="fpr-editing-mode"]:checked').val()
+					}
+				}
+			}).done(function(response) {
+				$button.attr('disabled', false);
+				$('html').removeClass('fpr-util-wait');
+				if (response.success) {
 					$('.fpr-editing-mode__button').prepend(
-						$('<span class="fpr-editing-mode__saved-notice">Saved</span>')
+						$('<span>', {
+							class: 'fpr-editing-mode__saved-notice fpr-editing-mode__saved-notice--success',
+							text: 'Saved'
+						})
+					);
+				} else {
+					$('.fpr-editing-mode__button').prepend(
+						$('<span>', {
+							class: 'fpr-editing-mode__saved-notice fpr-editing-mode__saved-notice--error',
+							text: 'Error saving'
+						})
 					);
 				}
 			});

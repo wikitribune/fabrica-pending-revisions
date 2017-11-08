@@ -40,6 +40,7 @@ class Base extends Singleton {
 		if (!is_admin()) { return; }
 
 		add_action('wp_ajax_fpr-editing-mode-save', array($this, 'savePermissions'));
+		add_action('wp_ajax_fpr-revision-publish', array($this, 'publishRevision'));
 
 		// Exit now if AJAX request, to hook admin-only requests after
 		if (wp_doing_ajax()) { return; }
@@ -117,11 +118,32 @@ class Base extends Singleton {
 
 	// Called asynchronously to save post's editing mode permissions
 	public function savePermissions() {
-		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) { return; }
+		if (!isset($_POST['data']['postID']) || !isset($_POST['data']['editingMode'])) {
+			wp_send_json_error(array('message' => 'No post ID or editing mode'));
+		}
 		$postID = $_POST['data']['postID'];
+		if (!check_ajax_referer("fpr-editing-mode-{$postID}", 'security', false)) {
+			wp_send_json_error(array('message' => 'Nonce check failed'));
+		}
 		$editingMode = $_POST['data']['editingMode'];
 		update_post_meta($postID, '_fpr_editing_mode', $editingMode);
-		exit();
+		wp_send_json_success();
+	}
+
+	// Called asynchronously to set a revision as accepted (publish)
+	public function publishRevision() {
+		if (empty($_POST['data']['revision']) || !is_numeric($_POST['data']['revision']) || !current_user_can('accept_revisions')) {
+			wp_send_json_error(array('message' => 'No revision ID or user not allowed'));
+		}
+		$revisionID = $_POST['data']['revision'];
+		$revision = wp_get_post_revision($revisionID);
+		if (empty($revision) || !check_ajax_referer("fpr-publish-post_{$revisionID}", 'security', false)) {
+			wp_send_json_error(array('message' => 'Invalid revision ID or nonce check failed'));
+		}
+
+		// Set the accepted ID to point to the revision
+		update_post_meta($revision->post_parent, '_fpr_accepted_revision_id', $revisionID);
+		wp_send_json_success();
 	}
 
 	// Check and update missing accepted revision — most likely plugin was not installed when post was created
@@ -151,7 +173,7 @@ class Base extends Singleton {
 		// If a specific revision was requested for editing, use that as the last revision
 		$sourceRevisionID = false;
 		if (isset($_GET['fpr-edit']) && is_numeric($_GET['fpr-edit'])) {
-			$revision = get_post($_GET['fpr-edit']);
+			$revision = wp_get_post_revision($_GET['fpr-edit']);
 			if (!empty($revision) && $revision->post_parent == $post->ID) {
 				$sourceRevisionID = $revision->ID;
 			}
@@ -304,27 +326,11 @@ class Base extends Singleton {
 		echo '<div class="notice notice-warning">' . $this->notificationMessages . '</div>';
 	}
 
-	// If `fpr-publish` GET variable is set, publish a given revision (ie. set it as the accepted revision)
-	private function initPublishRevision($postID) {
-		if (empty($_GET['fpr-publish']) || !is_numeric($_GET['fpr-publish']) || !current_user_can('accept_revisions')) { return ''; }
-		$revisionID = $_GET['fpr-publish'];
-		$revision = get_post($revisionID);
-		if (empty($revision) || $revision->post_parent != $postID) { return ''; }
-
-		check_admin_referer("fpr-publish-post_{$revisionID}");
-
-		// Set the accepted ID to point to the revision
-		update_post_meta($postID, '_fpr_accepted_revision_id', $revisionID);
-
-		$settings = Settings::instance()->getSettings();
-		return '<p>' . sprintf(__($settings['revision_published_notification_message'], self::DOMAIN), $revisionID, get_permalink($postID)) . '</p>';
-	}
-
 	// If `fpr-edit` GET variable is set, preload a given revision's fields
 	private function initEditRevision($postID) {
 		if (empty($_GET['fpr-edit']) || !is_numeric($_GET['fpr-edit']) || !current_user_can('accept_revisions')) { return; }
 		$revisionID = $_GET['fpr-edit'];
-		$revision = get_post($revisionID);
+		$revision = wp_get_post_revision($revisionID);
 		if (empty($revision) || $revision->post_parent != $postID) { return; }
 
 		// Set WP default values
@@ -347,7 +353,7 @@ class Base extends Singleton {
 			// Show user's suggestion in editor
 			add_filter('acf/prepare_field/key=' . $key, function($field) {
 				$revisionID = $_GET['fpr-edit'];
-				$revision = get_post($revisionID);
+				$revision = wp_get_post_revision($revisionID);
 				if (empty($revision)) { return $field; }
 				$field['value'] = get_field($field['key'], $revisionID);
 				return $field;
@@ -363,15 +369,9 @@ class Base extends Singleton {
 		if ($screen->base == 'post') { // Edit post page
 			$postID = get_the_ID();
 			if (empty($postID)) { return; }
-			$this->notificationMessages = '';
-
-			// Publish a given revision if `fpr-publish` GET variable is set
-			if (!empty($_GET['fpr-publish'])) {
-				$this->notificationMessages .= $this->initPublishRevision($postID);
-			}
 
 			// Get and show notification messages
-			$this->notificationMessages .= $this->getEditingModeNotificationMessage($postID);
+			$this->notificationMessages = $this->getEditingModeNotificationMessage($postID);
 			$this->notificationMessages .= $this->getRevisionNotAcceptedNotificationMessage($postID);
 			if (!empty($this->notificationMessages)) {
 				add_action('admin_notices', array($this, 'showNotificationMessages'));
@@ -590,18 +590,18 @@ class Base extends Singleton {
 	}
 
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
-	public function prepareRevisionForJS($revisionsData, $revision, $post) {
+	public function prepareRevisionForJS($revisionData, $revision, $post) {
 
 		// Set accepted flag in the revision pointed by the post
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true) ?: $this->getLatestRevision($post->ID)->ID;
-		$revisionsData['pending'] = false;
+		$revisionData['pending'] = false;
 		if ($revision->ID == $acceptedID) {
-			$revisionsData['current'] = true;
+			$revisionData['current'] = true;
 		} else {
-			$revisionsData['current'] = false;
+			$revisionData['current'] = false;
 			$accepted = get_post($acceptedID);
 			if (strtotime($revision->post_date) > strtotime($accepted->post_date)) {
-				$revisionsData['pending'] = true;
+				$revisionData['pending'] = true;
 			}
 		}
 
@@ -609,33 +609,33 @@ class Base extends Singleton {
 		global $wp_roles;
 		$author = get_userdata($revision->post_author);
 		$authorRole = $author->roles[0];
-		$revisionsData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
+		$revisionData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
 
 		// Revision note (if available)
-		$revisionsData['note'] = '';
-		$notes = explode(' - ', $revisionsData['timeAgo']);
+		$revisionData['note'] = '';
+		$notes = explode(' - ', $revisionData['timeAgo']);
 		if (count($notes)) {
 			$timeAgo = array_pop($notes);
 			$notes = implode(' - ', $notes);
-			$revisionsData['timeAgo'] = $timeAgo;
-			$revisionsData['note'] = str_replace('Note: ', '', $notes);
+			$revisionData['timeAgo'] = $timeAgo;
+			$revisionData['note'] = str_replace('Note: ', '', $notes);
 		}
 
 		// Revision on which this one is based
 		$sourceRevisionID = get_post_meta($revision->ID, '_fpr_source_revision_id', true);
 		if ($sourceRevisionID) {
-			$revisionsData['sourceRevisionID'] = $sourceRevisionID;
+			$revisionData['sourceRevisionID'] = $sourceRevisionID;
 		}
 
 		// Buttons URLs
-		$revisionsData['editUrl'] = admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}");
-		$revisionsData['previewUrl'] = get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID));
-		$revisionsData['publishUrl'] = str_replace('&amp;', '&', wp_nonce_url(
-			admin_url("post.php?post={$post->ID}&action=edit&fpr-publish={$revision->ID}"),
-			"fpr-publish-post_{$revision->ID}"
-		));
+		$revisionData['urls'] = array(
+			'edit' => admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}"),
+			'preview' => get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID)),
+			'ajax' => admin_url('admin-ajax.php')
+		);
+		$revisionData['nonce'] = wp_create_nonce("fpr-publish-post_{$revision->ID}");
 
-		return $revisionsData;
+		return $revisionData;
 	}
 
 	// Get data to send to Edit post page
@@ -678,6 +678,7 @@ class Base extends Singleton {
 			'acceptedID' => $acceptedID,
 			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
+			'nonce' => wp_create_nonce("fpr-editing-mode-{$post->ID}"),
 			'urls' => array(
 				'revisions' => $revisionsUrl,
 				'ajax' => admin_url('admin-ajax.php')
@@ -687,15 +688,16 @@ class Base extends Singleton {
 
 	// Set JSs and CSSs for Edit post and Browse revisions pages
 	public function enqueueScripts($hookSuffix) {
+		wp_enqueue_style('fpr-style', plugin_dir_url(Plugin::MAIN_FILE) . 'css/main.css');
 		if (in_array($hookSuffix, array('post.php', 'post-new.php'))) {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/main.css');
+			wp_enqueue_style('fpr-post-style', plugin_dir_url(Plugin::MAIN_FILE) . 'css/post.css');
 			wp_enqueue_script('fpr-post', plugin_dir_url(Plugin::MAIN_FILE) . 'js/post.js', array('jquery', 'revisions'));
 			wp_localize_script('fpr-post', 'fprData', $this->preparePostForJS());
 		} else if ($hookSuffix == 'revision.php') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/revisions.css');
+			wp_enqueue_style('fpr-revisions-style', plugin_dir_url(Plugin::MAIN_FILE) . 'css/revisions.css');
 			wp_enqueue_script('fpr-revisions', plugin_dir_url(Plugin::MAIN_FILE) . 'js/revisions.js', array('jquery', 'revisions'));
 		} else if ($hookSuffix == 'settings_page_fpr-settings') {
-			wp_enqueue_style('fpr-styles', plugin_dir_url(Plugin::MAIN_FILE) . 'css/settings.css');
+			wp_enqueue_style('fpr-settings-style', plugin_dir_url(Plugin::MAIN_FILE) . 'css/settings.css');
 		}
 	}
 }
