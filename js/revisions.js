@@ -191,7 +191,7 @@
 			// Buttons actions
 			$retrieveButton.click(function() { document.location = revision.urls.edit; });
 			$editButton.click(function() { document.location = revision.urls.edit; });
-			$previewButton.click(function() { document.location = revision.urls.preview; });
+			$previewButton.click(function() { window.open(revision.urls.preview, '_blank'); });
 			$publishButton.click(function(event) {
 				$publishButton.attr('disabled', true);
 				$('html').addClass('fpr-util-wait');
