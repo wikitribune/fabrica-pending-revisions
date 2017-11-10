@@ -342,8 +342,7 @@ class Base extends Singleton {
 		$post->post_content = $revision->post_content;
 		$post->post_excerpt = $revision->post_excerpt;
 
-		// Set ACF meta fields
-		// Adapted from the acf_copy_postmeta() function
+		// Set ACF meta fields – adapted from the `acf_copy_postmeta()`
 		if (!function_exists('acf_maybe_get')) { return; }
 		$meta = get_post_meta($revisionID);
 		foreach ($meta as $name => $value) {
@@ -354,10 +353,7 @@ class Base extends Singleton {
 			if (!acf_is_field_key($key)) { continue; }
 
 			// Show user's suggestion in editor
-			add_filter('acf/prepare_field/key=' . $key, function($field) {
-				$revisionID = $_GET['fpr-edit'];
-				$revision = wp_get_post_revision($revisionID);
-				if (empty($revision)) { return $field; }
+			add_filter('acf/prepare_field/key=' . $key, function($field) use ($revisionID) {
 				$field['value'] = get_field($field['key'], $revisionID);
 				return $field;
 			});
