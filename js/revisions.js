@@ -1,10 +1,13 @@
 (function($) {
 	$(function() {
-
-		// Get accepted revision index in revisions data array
 		var revisionData = _wpRevisionsSettings.revisionData,
 			acceptedIndex = revisionData.length - 1,
-			revisionModels = wp.revisions.view.frame.model.revisions.models;
+			revisionFrame = wp.revisions.view.frame,
+			revisionModels = revisionFrame.model.revisions.models,
+			controlViews = revisionFrame.views.first('.revisions-control-frame').views.get(''),
+			sliderView;
+
+		// Get accepted revision index in revisions data array
 		for (var i = acceptedIndex; i >= 0; i--) {
 			revision = revisionData[i];
 			if (revision.current) {
@@ -22,31 +25,54 @@
 			}
 		}
 
+		// Always show current revision tooltip when not hovering slider
+		var $slider = $('.wp-slider');
+		for (var i = 0; i < controlViews.length; i++) {
+
+			// Get Slider's Backbone view
+			if (controlViews[i].el != $slider[0]) { continue; }
+			sliderView = controlViews[i];
+			break;
+		}
+
+		var showCurrentRevisionTooltip = function(model) {
+			model.set({
+				hovering: true,
+				hoveredRevision: revisionModels[acceptedIndex]
+			});
+		};
+		sliderView.model.on('change:hovering', function(model, value) {
+			if (value) { return; } // Hovering
+			showCurrentRevisionTooltip(model);
+		});
+
 		// Mark the accepted revision visually
 		var renderMarks = function(acceptedIndex) {
-			if (acceptedIndex < revisionData.length - 1) {
-				$('.fcr-current-revision-tickmark').remove();
-				$('.revisions-tickmarks div').css({ borderLeft: '' });
-				$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
-					borderLeft: '3px solid #46b450'
-				});
-				var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
-					$pendingChangesTickmarks = $('<span>', { class: 'fcr-current-revision-tickmark' });
-				$pendingChangesTickmarks.css({
-					position: 'absolute',
-					height: '100%',
-					'-webkit-box-sizing': 'border-box',
-					'-moz-box-sizing': 'border-box',
-					boxSizing: 'border-box',
-					display: 'block',
-					left: acceptedPosition + '%',
-					width: (100 - acceptedPosition) + '%',
-					border: 'none',
-					background: 'repeating-linear-gradient(-60deg, #ddd, #ddd 9px, #f7f7f7 10px, #f7f7f7 17px)',
-					pointerEvents: 'none',
-				});
-				$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
-			}
+			if (acceptedIndex >= revisionData.length - 1) { return; }
+
+			$('.fcr-current-revision-tickmark').remove();
+			$('.revisions-tickmarks div').css({ borderLeft: '' });
+			$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
+				borderLeft: '3px solid #46b450'
+			});
+			var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
+				$pendingChangesTickmarks = $('<span>', { class: 'fcr-current-revision-tickmark' });
+			$pendingChangesTickmarks.css({
+				position: 'absolute',
+				height: '100%',
+				'-webkit-box-sizing': 'border-box',
+				'-moz-box-sizing': 'border-box',
+				boxSizing: 'border-box',
+				display: 'block',
+				left: acceptedPosition + '%',
+				width: (100 - acceptedPosition) + '%',
+				border: 'none',
+				background: 'repeating-linear-gradient(-60deg, #ddd, #ddd 9px, #f7f7f7 10px, #f7f7f7 17px)',
+				pointerEvents: 'none',
+			});
+			$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
+
+			showCurrentRevisionTooltip(sliderView.model);
 		}
 		renderMarks(acceptedIndex);
 
@@ -230,7 +256,8 @@
 								revisionModels[i].attributes.current = revisionData[i].current;
 							}
 						}
-						renderMarks(revisionIndex);
+						acceptedIndex = revisionIndex;
+						renderMarks(acceptedIndex);
 						renderColumnHeaders($slider.slider('value'), $slider.slider('values'));
 					} else {
 						$publishButton.after(
