@@ -35,16 +35,28 @@
 			break;
 		}
 
-		var showCurrentRevisionTooltip = function(model) {
-			model.set({
+		// Replace Slider's mouse enter and leave events
+		var showCurrentRevisionTooltip = function() {
+			sliderView.model.set({
 				hovering: true,
 				hoveredRevision: revisionModels[acceptedIndex]
 			});
 		};
-		sliderView.model.on('change:hovering', function(model, value) {
-			if (value) { return; } // Hovering
-			showCurrentRevisionTooltip(model);
+		$slider.hoverIntent({
+			over: sliderView.mouseEnter,
+			out: function() {
+				showCurrentRevisionTooltip();
+
+				// Sometimes tooltip gets stuck on mouseleave: double check after awhile
+				setTimeout(function() {
+					if (!$slider.filter(':hover').length) {
+						showCurrentRevisionTooltip();
+					}
+				}, 1000);
+			},
+			timeout: 400
 		});
+		showCurrentRevisionTooltip();
 
 		// Mark the accepted revision visually
 		var renderMarks = function(acceptedIndex) {
@@ -72,7 +84,7 @@
 			});
 			$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
 
-			showCurrentRevisionTooltip(sliderView.model);
+			showCurrentRevisionTooltip();
 		}
 		renderMarks(acceptedIndex);
 
