@@ -630,7 +630,7 @@ class Base extends Singleton {
 		// Buttons URLs
 		$revisionData['urls'] = array(
 			'edit' => admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}"),
-			'preview' => get_preview_post_link($post->ID, array('fpr-preview' => $revision->ID)),
+			'preview' => add_query_arg(array('fpr-preview' => $revision->ID), get_permalink($post->ID)),
 			'ajax' => admin_url('admin-ajax.php')
 		);
 		$revisionData['nonce'] = wp_create_nonce("fpr-publish-post_{$revision->ID}");
@@ -654,12 +654,13 @@ class Base extends Singleton {
 		$revisions = $this->getNonAutosaveRevisions($post->ID, $args);
 		$revisionsCount = count($revisions);
 		$latestRevision = current($revisions);
-		$toRevision = isset($_GET['fpr-edit']) ? $_GET['fpr-edit'] : $latestRevision->ID;
+		$latestRevisionID = $latestRevision ? $latestRevision->ID : false;
+		$toRevision = isset($_GET['fpr-edit']) ? $_GET['fpr-edit'] : $latestRevisionID;
 		$pendingCount = false;
 		$revisionsUrl = admin_url('revision.php?revision=' . $toRevision);
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
 		if ($acceptedID) {
-			if ($acceptedID != $latestRevision->ID) {
+			if ($acceptedID != $latestRevisionID) {
 				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $toRevision);
 			}
 			$pendingCount = 0;
@@ -677,7 +678,7 @@ class Base extends Singleton {
 			'revisionsCount' => $revisionsCount,
 			'pendingCount' => $pendingCount,
 			'acceptedID' => $acceptedID,
-			'latestRevisionID' => $latestRevision ? $latestRevision->ID : false,
+			'latestRevisionID' => $latestRevisionID,
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'nonce' => wp_create_nonce("fpr-editing-mode-{$post->ID}"),
 			'urls' => array(
