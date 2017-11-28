@@ -66,7 +66,7 @@
 			// Replace tooltip text
 			$byline.empty()
 				.append([
-					$('<span>', { class: 'fpr-tooltip-current-revision', text: 'Current Publish Revision' }),
+					$('<span>', { class: 'fpr-tooltip-current-revision', text: 'Current Published Revision' }),
 					$('<span>', { text: ' by ' }),
 					$authorName
 				]);
