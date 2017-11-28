@@ -33,6 +33,11 @@
 	bottom: initial;
 }
 
+.fpr-tooltip-current-revision {
+	color: #46b450;
+	font-weight: bold;
+}
+
 .fpr-revisions-headers {
 	display: flex;
 	clear: both;
