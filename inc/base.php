@@ -48,6 +48,8 @@ class Base extends Singleton {
 		// Saving hooks
 		add_action('edit_form_top', array($this, 'cacheLastRevisionData'));
 		add_action('wp_insert_post_empty_content', array($this, 'checkSaveAllowed'), 99, 2);
+		add_filter('wp_save_post_revision_post_has_changed', array($this, 'checkExtraFieldChanges'), 10, 3);
+		add_filter('_wp_put_post_revision', array($this, 'saveAdditionalRevisionFields'), 10, 1);
 		add_action('save_post', array($this, 'saveAcceptedRevision'), 10, 3);
 		add_filter('post_updated_messages', array($this, 'changePostUpdatedMessages'));
 
@@ -238,13 +240,41 @@ class Base extends Singleton {
 		return $where;
 	}
 
+	// Check taxonomy / post thumbnail changes in order to force a revision
+	public function checkExtraFieldChanges($hasChanged, $lastRevision, $post) {
+		$taxonomies = get_object_taxonomies($post->post_type);
+		foreach ($taxonomies as $taxonomy) {
+			$currentTerms = get_the_terms($post->ID, $taxonomy) ?: array();
+			$revisionTerms = get_the_terms($lastRevision->ID, $taxonomy) ?: array();
+			if ($currentTerms != $revisionTerms) {
+				return true;
+			}
+		}
+		return $hasChanged;
+	}
+
+	// Save taxonomy / post thumbnail changes to revision
+	public function saveAdditionalRevisionFields($revisionID) {
+		$revision = get_post($revisionID);
+		$post = get_post($revision->post_parent);
+		$taxonomies = get_object_taxonomies($post->post_type);
+		foreach ($taxonomies as $taxonomy) {
+			$terms = get_the_terms($post->ID, $taxonomy) ?: array();
+			if (empty($terms)) { continue; }
+			$termIDs = wp_list_pluck($terms, 'term_id');
+			wp_set_post_terms($revision->ID, $termIDs, $taxonomy);
+		}
+	}
+
 	// Update accepted revision if allowed and revision ID from which this has originated
 	public function saveAcceptedRevision($postID, $post, $update) {
 		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
-		// Save reference to revision on which this one is based
+		// Get the latest revision corresponding to the post, in order to save extra information per revision
 		$args = array('post_author' => get_current_user_id());
 		$revision = $this->getLatestRevision($postID, $args);
+
+		// Save reference to revision on which this one is based
 		if (!$revision) { return; } // No revision to accept or set source revision on
 		if (isset($_POST['_fpr_source_revision_id'])) {
 
