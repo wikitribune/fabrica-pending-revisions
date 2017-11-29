@@ -633,9 +633,9 @@ class Base extends Singleton {
 
 	// Show extra revision fields on revision timeline
 	public function displayExtraRevisionField($value, $field, $post, $direction) {
-		var_dump($field);
 		if (substr($field, 0, 5) == '_tax_') {
-			return 'value';
+			$terms = wp_get_post_terms($post->ID, substr($field, 5), array('fields' => 'names'));
+			return join($terms, ', ');
 		}
 	}
 
