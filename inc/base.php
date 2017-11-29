@@ -69,6 +69,7 @@ class Base extends Singleton {
 		// Browse revisions
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
 		add_filter('admin_body_class', array($this, 'addAutosaveBodyClass'));
+		add_filter('_wp_post_revision_fields', array($this, 'showExtraRevisionFields'), 10, 2 );
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 20, 3);
@@ -618,6 +619,26 @@ class Base extends Singleton {
 		return $classes;
 	}
 
+	// Register extra revision fields for revision timeline
+	public function showExtraRevisionFields($fields, $post) {
+		if (empty($post)) { return $fields; }
+		$taxonomies = get_object_taxonomies($post['post_type'], 'objects');
+		foreach ($taxonomies as $taxonomy) {
+			$slug = '_tax_' . $taxonomy->name;
+			$fields[$slug] = $taxonomy->label;
+			add_filter("_wp_post_revision_field_{$slug}", array($this, 'displayExtraRevisionField'), 10, 4);
+		}
+		return $fields;
+	}
+
+	// Show extra revision fields on revision timeline
+	public function displayExtraRevisionField($value, $field, $post, $direction) {
+		var_dump($field);
+		if (substr($field, 0, 5) == '_tax_') {
+			return 'value';
+		}
+	}
+
 	// Update revisions data to show in Browse Revisions page, to reflect current accepted post
 	public function prepareRevisionForJS($revisionData, $revision, $post) {
 
@@ -637,9 +658,11 @@ class Base extends Singleton {
 		// Author role
 		global $wp_roles;
 		$author = get_userdata($revision->post_author);
-		$authorRole = $author->roles[0];
-		$revisionData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
-		$revisionData['author']['current'] = $revision->post_author == get_current_user_id();
+		if (!empty($author)) {
+			$authorRole = $author->roles[0];
+			$revisionData['author']['role'] = translate_user_role($wp_roles->roles[$authorRole]['name']);
+			$revisionData['author']['current'] = $revision->post_author == get_current_user_id();
+		}
 
 		// Revision note (if available)
 		$revisionData['note'] = '';
