@@ -41,6 +41,7 @@ class Base extends Singleton {
 
 		add_action('wp_ajax_fpr-editing-mode-save', array($this, 'savePermissions'));
 		add_action('wp_ajax_fpr-revision-publish', array($this, 'publishRevision'));
+		add_filter('_wp_post_revision_fields', array($this, 'showExtraRevisionFields'), 10, 2 );
 
 		// Exit now if AJAX request, to hook admin-only requests after
 		if (wp_doing_ajax()) { return; }
@@ -69,7 +70,6 @@ class Base extends Singleton {
 		// Browse revisions
 		add_filter('posts_where', array($this, 'filterBrowseRevisions'));
 		add_filter('admin_body_class', array($this, 'addAutosaveBodyClass'));
-		add_filter('_wp_post_revision_fields', array($this, 'showExtraRevisionFields'), 10, 2 );
 
 		// Scripts
 		add_action('wp_prepare_revision_for_js', array($this, 'prepareRevisionForJS'), 20, 3);
