@@ -241,8 +241,10 @@ class Base extends Singleton {
 		return $where;
 	}
 
-	// Check taxonomy / post thumbnail changes in order to force a revision
+	// Check taxonomy / featured image changes in order to force a revision
 	public function checkExtraFieldChanges($hasChanged, $lastRevision, $post) {
+
+		// Taxonomies
 		$taxonomies = get_object_taxonomies($post->post_type);
 		foreach ($taxonomies as $taxonomy) {
 			$currentTerms = get_the_terms($post->ID, $taxonomy) ?: array();
@@ -251,19 +253,36 @@ class Base extends Singleton {
 				return true;
 			}
 		}
+
+		// Featured image
+		$currentThumbnail = get_post_meta($post->ID, '_thumbnail_id', true);
+		$revisionThumbnail = get_post_meta($lastRevision->ID, '_thumbnail_id', true);
+		if ($currentThumbnail != $revisionThumbnail) {
+			return true;
+		}
+
+		// Return unchanged value otherwise
 		return $hasChanged;
 	}
 
-	// Save taxonomy / post thumbnail changes to revision
+	// Save taxonomy / featured image changes to revision
 	public function saveAdditionalRevisionFields($revisionID) {
 		$revision = get_post($revisionID);
 		$post = get_post($revision->post_parent);
+
+		// Save taxonomies to the revision
 		$taxonomies = get_object_taxonomies($post->post_type);
 		foreach ($taxonomies as $taxonomy) {
 			$terms = get_the_terms($post->ID, $taxonomy) ?: array();
 			if (empty($terms)) { continue; }
 			$termIDs = wp_list_pluck($terms, 'term_id');
 			wp_set_post_terms($revision->ID, $termIDs, $taxonomy);
+		}
+
+		// Save featured image to the revision
+		$thumbnail = get_post_meta($post->ID, '_thumbnail_id', true);
+		if (!empty($thumbnail)) {
+			update_metadata('post', $revision->ID, '_thumbnail_id', $thumbnail, '');
 		}
 	}
 
@@ -380,7 +399,6 @@ class Base extends Singleton {
 				return $terms;
 			}
 			return wp_get_object_terms($revisionID, $taxonomy, $args);
-
 		}, 100, 4);
 
 		// Preload ACF meta fields – adapted from `acf_copy_postmeta()`
@@ -632,12 +650,19 @@ class Base extends Singleton {
 	// Register extra revision fields for revision timeline
 	public function showExtraRevisionFields($fields, $post) {
 		if (empty($post)) { return $fields; }
+
+		// Taxonomies
 		$taxonomies = get_object_taxonomies($post['post_type'], 'objects');
 		foreach ($taxonomies as $taxonomy) {
 			$slug = '_tax_' . $taxonomy->name;
 			$fields[$slug] = $taxonomy->label;
 			add_filter("_wp_post_revision_field_{$slug}", array($this, 'displayExtraRevisionField'), 10, 4);
 		}
+
+		// Featured image
+		$fields['featured-image'] = 'Featured image';
+		add_filter("_wp_post_revision_field_featured-image", array($this, 'displayExtraRevisionField'), 10, 4);
+
 		return $fields;
 	}
 
@@ -646,6 +671,8 @@ class Base extends Singleton {
 		if (substr($field, 0, 5) == '_tax_') {
 			$terms = wp_get_post_terms($post->ID, substr($field, 5), array('fields' => 'names'));
 			return join($terms, ', ');
+		} else if ($field == 'featured-image') {
+			return get_the_post_thumbnail_url($post->ID);
 		}
 	}
 
