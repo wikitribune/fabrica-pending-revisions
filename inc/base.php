@@ -369,11 +369,21 @@ class Base extends Singleton {
 
 		// Set WP default values
 		global $post;
+		$postID = $post->ID;
 		$post->post_title = $revision->post_title;
 		$post->post_content = $revision->post_content;
 		$post->post_excerpt = $revision->post_excerpt;
 
-		// Set ACF meta fields – adapted from the `acf_copy_postmeta()`
+		// Preload taxonomies
+		add_filter('get_object_terms', function($terms, $objectIDs, $taxonomy, $args) use ($postID, $revisionID) {
+			if (empty($postID) || empty($revisionID) || !is_array($objectIDs) || current($objectIDs) != $postID) {
+				return $terms;
+			}
+			return wp_get_object_terms($revisionID, $taxonomy, $args);
+
+		}, 100, 4);
+
+		// Preload ACF meta fields – adapted from `acf_copy_postmeta()`
 		if (!function_exists('acf_maybe_get')) { return; }
 		$meta = get_post_meta($revisionID);
 		foreach ($meta as $name => $value) {

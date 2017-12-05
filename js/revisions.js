@@ -57,6 +57,23 @@
 		});
 		showCurrentRevisionTooltip();
 
+		// Change accepted (current published) revision tooltip styling
+		var formatAcceptedRevisionTooltip = function(model, value) {
+			if (!model.attributes.current) { return; }
+			var $byline = $('.revisions-tooltip .author-card .byline'),
+				$authorName = $('.author-name', $byline);
+
+			// Replace tooltip text
+			$byline.empty()
+				.append([
+					$('<span>', { class: 'fpr-tooltip-current-revision', text: 'Current Published Revision' }),
+					$('<span>', { text: ' by ' }),
+					$authorName
+				]);
+		};
+		sliderView.model.on('hovered:revision', formatAcceptedRevisionTooltip);
+
+
 		// Mark the accepted revision visually
 		var renderMarks = function(acceptedIndex) {
 			if (acceptedIndex >= revisionData.length - 1) { return; }
@@ -84,6 +101,7 @@
 			$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
 
 			showCurrentRevisionTooltip();
+			formatAcceptedRevisionTooltip(revisionModels[acceptedIndex]);
 		}
 		renderMarks(acceptedIndex);
 
