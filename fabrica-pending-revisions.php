@@ -3,7 +3,7 @@
 Plugin Name: Fabrica Pending Revisions
 Plugin URI:
 Description:
-Version: 0.0.11
+Version: 0.0.12
 Author: Fabrica
 Author URI: https://fabri.ca/
 Text Domain: fabrica-pending-revisions
