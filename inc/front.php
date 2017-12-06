@@ -103,7 +103,7 @@ class Front extends Singleton {
 	}
 
 	// Replace taxonomy term data with post's accepted revision terms
-	public function filterAcceptedRevisionTaxonomies($terms, $objectIDs, $taxonomy, $args) {
+	public function filterAcceptedRevisionTaxonomies($terms, $objectIDs, $taxonomies, $args) {
 		if (is_preview()) { return $terms; }
 		if (!is_array($objectIDs) || count($objectIDs) != 1 || empty(current($objectIDs))) { return $terms; }
 		$postID = current($objectIDs);
@@ -111,13 +111,13 @@ class Front extends Singleton {
 
 		// Preview specific revision
 		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
-			return wp_get_object_terms($_GET['fpr-preview'], $taxonomy, $args);
+			return wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID) { return $terms; }
-		return wp_get_object_terms($acceptedID, $taxonomy, $args);
+		return wp_get_object_terms($acceptedID, $taxonomies, $args);
 	}
 }
 
