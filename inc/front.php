@@ -26,13 +26,13 @@ class Front extends Singleton {
 		if (empty($postID) || !in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $content; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return get_post_field('post_content', $_GET['fpr-preview']);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $content; }
+		if (!$acceptedID || $acceptedID == $postID) { return $content; }
 		return get_post_field('post_content', $acceptedID);
 	}
 
@@ -42,13 +42,13 @@ class Front extends Singleton {
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $excerpt; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return get_post_field('post_excerpt', $_GET['fpr-preview']);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $excerpt; }
+		if (!$acceptedID || $acceptedID == $postID) { return $excerpt; }
 		return get_post_field('post_excerpt', $acceptedID);
 	}
 
@@ -59,13 +59,13 @@ class Front extends Singleton {
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $title; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return get_post_field('post_title', $_GET['fpr-preview']);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $title; }
+		if (!$acceptedID || $acceptedID == $postID) { return $title; }
 		return get_post_field('post_title', $acceptedID);
 	}
 
@@ -76,13 +76,13 @@ class Front extends Singleton {
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes()) || $field['name'] == 'accepted_revision_id') { return $value; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return get_field($field['name'], $_GET['fpr-preview']);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $value; }
+		if (!$acceptedID || $acceptedID == $postID) { return $value; }
 		return get_field($field['name'], $acceptedID);
 	}
 
@@ -92,13 +92,13 @@ class Front extends Singleton {
 		if (!is_numeric($postID) || !in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes()) || $key != '_thumbnail_id') { return $value; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return get_post_meta($_GET['fpr-preview'], '_thumbnail_id', true);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $value; }
+		if (!$acceptedID || $acceptedID == $postID) { return $value; }
 		return get_post_meta($acceptedID, '_thumbnail_id', true);
 	}
 
@@ -110,13 +110,13 @@ class Front extends Singleton {
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $terms; }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
 			return wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
 		}
 
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID) { return $terms; }
+		if (!$acceptedID || $acceptedID == $postID) { return $terms; }
 		return wp_get_object_terms($acceptedID, $taxonomies, $args);
 	}
 }
