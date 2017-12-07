@@ -93,7 +93,7 @@ class Front extends Singleton {
 
 		// Preview specific revision
 		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
-			return get_post_meta($_GET['fpr-preview'], '_thumbnail_id', true);
+			return get_post_meta($_GET['fpr-preview'], '_thumbnail_id', $single);
 		}
 
 		// Accepted revision
