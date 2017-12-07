@@ -99,7 +99,7 @@ class Front extends Singleton {
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID || $acceptedID == $postID) { return $value; }
-		return get_post_meta($acceptedID, '_thumbnail_id', true);
+		return get_post_meta($acceptedID, '_thumbnail_id', $single);
 	}
 
 	// Replace taxonomy term data with post's accepted revision terms

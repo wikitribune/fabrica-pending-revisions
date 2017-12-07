@@ -406,7 +406,7 @@ class Base extends Singleton {
 			if (empty($postID) || empty($revisionID) || !is_numeric($objectID) || $objectID != $postID) {
 				return $value;
 			}
-			return get_post_meta($revisionID, '_thumbnail_id', true);
+			return get_post_meta($revisionID, '_thumbnail_id', $single);
 		}, 100, 4);
 
 		// Preload ACF meta fields – adapted from `acf_copy_postmeta()`
