@@ -394,11 +394,19 @@ class Base extends Singleton {
 		$post->post_excerpt = $revision->post_excerpt;
 
 		// Preload taxonomies
-		add_filter('get_object_terms', function($terms, $objectIDs, $taxonomy, $args) use ($postID, $revisionID) {
+		add_filter('get_object_terms', function($terms, $objectIDs, $taxonomies, $args) use ($postID, $revisionID) {
 			if (empty($postID) || empty($revisionID) || !is_array($objectIDs) || current($objectIDs) != $postID) {
 				return $terms;
 			}
-			return wp_get_object_terms($revisionID, $taxonomy, $args);
+			return wp_get_object_terms($revisionID, $taxonomies, $args);
+		}, 100, 4);
+
+		// Preload featured image
+		add_filter('get_post_metadata', function($value, $objectID, $key, $single) use ($postID, $revisionID) {
+			if (empty($postID) || empty($revisionID) || !is_numeric($objectID) || $objectID != $postID) {
+				return $value;
+			}
+			return get_post_meta($revisionID, '_thumbnail_id', true);
 		}, 100, 4);
 
 		// Preload ACF meta fields – adapted from `acf_copy_postmeta()`
