@@ -729,6 +729,7 @@ class Base extends Singleton {
 		$revisionData['urls'] = array(
 			'edit' => admin_url("post.php?post={$post->ID}&action=edit&fpr-edit={$revision->ID}"),
 			'preview' => add_query_arg(array('fpr-preview' => $revision->ID), get_permalink($post->ID)),
+			'view' => get_permalink($post->ID),
 			'ajax' => admin_url('admin-ajax.php')
 		);
 		$revisionData['nonce'] = wp_create_nonce("fpr-publish-post_{$revision->ID}");
