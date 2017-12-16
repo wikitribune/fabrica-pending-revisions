@@ -26,84 +26,89 @@
 		}
 
 		// Always show current revision tooltip when not hovering slider
-		var $slider = $('.wp-slider');
-		for (var i = 0; i < controlViews.length; i++) {
-
-			// Get Slider's Backbone view
-			if (controlViews[i].el != $slider[0]) { continue; }
-			sliderView = controlViews[i];
-			break;
-		}
-
-		// Replace Slider's mouse enter and leave events
-		var showCurrentRevisionTooltip = function() {
-			sliderView.model.set({
-				hovering: true,
-				hoveredRevision: revisionModels[acceptedIndex]
-			});
-		};
-		$slider.hoverIntent({
-			over: sliderView.mouseEnter,
-			out: function() {
-				showCurrentRevisionTooltip();
-
-				// Sometimes tooltip gets stuck on mouseleave: double check after awhile
-				setTimeout(function() {
-					if (!$slider.filter(':hover').length) {
-						showCurrentRevisionTooltip();
-					}
-				}, 1000);
+		var $slider = $('.wp-slider:visible');
+		if ($slider.length <= 0) {
+			var renderMarks = function() {
+				// Empty on purpose: don't show tooltip or try to highlight accepted revision tickmark when slider is not visible (ie. for an Autosave revision's timeline)
 			}
-		});
-		showCurrentRevisionTooltip();
+		} else {
+			for (var i = 0; i < controlViews.length; i++) {
 
-		// Change accepted (current published) revision tooltip styling
-		var formatAcceptedRevisionTooltip = function(model, value) {
-			if (!model.attributes.current) { return; }
-			var $byline = $('.revisions-tooltip .author-card .byline'),
-				$authorName = $('.author-name', $byline);
+				// Get Slider's Backbone view
+				if (controlViews[i].el != $slider[0]) { continue; }
+				sliderView = controlViews[i];
+				break;
+			}
 
-			// Replace tooltip text
-			$byline.empty()
-				.append([
-					$('<span>', { class: 'fpr-tooltip-current-revision', text: 'Current Published Revision' }),
-					$('<span>', { text: ' by ' }),
-					$authorName
-				]);
-		};
-		sliderView.model.on('hovered:revision', formatAcceptedRevisionTooltip);
+			// Replace Slider's mouse enter and leave events
+			var showCurrentRevisionTooltip = function() {
+				sliderView.model.set({
+					hovering: true,
+					hoveredRevision: revisionModels[acceptedIndex]
+				});
+			};
+			$slider.hoverIntent({
+				over: sliderView.mouseEnter,
+				out: function() {
+					showCurrentRevisionTooltip();
 
-
-		// Mark the accepted revision visually
-		var renderMarks = function(acceptedIndex) {
-			if (acceptedIndex >= revisionData.length - 1) { return; }
-
-			$('.fcr-current-revision-tickmark').remove();
-			$('.revisions-tickmarks div').css({ borderLeft: '' });
-			$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
-				borderLeft: '3px solid #46b450'
+					// Sometimes tooltip gets stuck on mouseleave: double check after awhile
+					setTimeout(function() {
+						if (!$slider.filter(':hover').length) {
+							showCurrentRevisionTooltip();
+						}
+					}, 1000);
+				}
 			});
-			var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
-				$pendingChangesTickmarks = $('<span>', { class: 'fcr-current-revision-tickmark' });
-			$pendingChangesTickmarks.css({
-				position: 'absolute',
-				height: '100%',
-				'-webkit-box-sizing': 'border-box',
-				'-moz-box-sizing': 'border-box',
-				boxSizing: 'border-box',
-				display: 'block',
-				left: acceptedPosition + '%',
-				width: (100 - acceptedPosition) + '%',
-				border: 'none',
-				background: 'repeating-linear-gradient(-60deg, #ddd, #ddd 9px, #f7f7f7 10px, #f7f7f7 17px)',
-				pointerEvents: 'none',
-			});
-			$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
-
 			showCurrentRevisionTooltip();
-			formatAcceptedRevisionTooltip(revisionModels[acceptedIndex]);
+
+			// Change accepted (current published) revision tooltip styling
+			var formatAcceptedRevisionTooltip = function(model, value) {
+				if (!model.attributes.current) { return; }
+				var $byline = $('.revisions-tooltip .author-card .byline'),
+					$authorName = $('.author-name', $byline);
+
+				// Replace tooltip text
+				$byline.empty()
+					.append([
+						$('<span>', { class: 'fpr-tooltip-current-revision', text: 'Current Published Revision' }),
+						$('<span>', { text: ' by ' }),
+						$authorName
+					]);
+			};
+			sliderView.model.on('hovered:revision', formatAcceptedRevisionTooltip);
+
+			// Mark the accepted revision visually
+			var renderMarks = function(acceptedIndex) {
+				if (acceptedIndex >= revisionData.length - 1) { return; }
+
+				$('.fcr-current-revision-tickmark').remove();
+				$('.revisions-tickmarks div').css({ borderLeft: '' });
+				$('.revisions-tickmarks div:nth-child(' + (acceptedIndex + 1) + ')').css({
+					borderLeft: '3px solid #46b450'
+				});
+				var acceptedPosition = acceptedIndex / (revisionData.length - 1) * 100,
+					$pendingChangesTickmarks = $('<span>', { class: 'fcr-current-revision-tickmark' });
+				$pendingChangesTickmarks.css({
+					position: 'absolute',
+					height: '100%',
+					'-webkit-box-sizing': 'border-box',
+					'-moz-box-sizing': 'border-box',
+					boxSizing: 'border-box',
+					display: 'block',
+					left: acceptedPosition + '%',
+					width: (100 - acceptedPosition) + '%',
+					border: 'none',
+					background: 'repeating-linear-gradient(-60deg, #ddd, #ddd 9px, #f7f7f7 10px, #f7f7f7 17px)',
+					pointerEvents: 'none',
+				});
+				$('.revisions-tickmarks').prepend($pendingChangesTickmarks);
+
+				showCurrentRevisionTooltip();
+				formatAcceptedRevisionTooltip(revisionModels[acceptedIndex]);
+			}
+			renderMarks(acceptedIndex);
 		}
-		renderMarks(acceptedIndex);
 
 		// Change columns' header cards
 		var $revisionsHeaders = $('<div>', {class: 'fpr-revisions-headers'});
@@ -200,7 +205,7 @@
 				$buttons.append($('<input>', {
 					type: 'button',
 					value: revision.current ? 'View' : 'Preview',
-					class: 'button button-secondary fpr-revisions-buttons__button fpr-revisions-buttons__button--preview',
+					class: 'button button-secondary fpr-revisions-buttons__button  fpr-revisions-buttons__button--preview',
 				}));
 				if (!revision.current && revision.userCanAccept) {
 					$buttons.append( $('<input>', {
@@ -246,7 +251,10 @@
 			// Buttons actions
 			$retrieveButton.click(function() { document.location = revision.urls.edit; });
 			$editButton.click(function() { document.location = revision.urls.edit; });
-			$previewButton.click(function() { window.open(revision.urls.preview, '_blank'); });
+			$previewButton.click(function() {
+				var previewUrl = revision.current ? revision.urls.view : revision.urls.preview;
+				window.open(previewUrl, '_blank');
+			});
 			$publishButton.click(function(event) {
 				$publishButton.attr('disabled', true);
 				$('html').addClass('fpr-util-wait');
