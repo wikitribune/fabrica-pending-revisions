@@ -117,6 +117,7 @@ class Front extends Singleton {
 		// Accepted revision
 		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
 		if (!$acceptedID || $acceptedID == $postID) { return $terms; }
+		clean_post_cache($postID);
 		return wp_get_object_terms($acceptedID, $taxonomies, $args);
 	}
 }
