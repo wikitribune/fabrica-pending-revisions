@@ -129,7 +129,7 @@ class Front extends Singleton {
 			if (!$acceptedID || $acceptedID == $objectID) { continue; }
 			$acceptedRevisions[$acceptedID] = $objectID;
 		}
-		if (empty($acceptedRevisions)) { return $terms; } // No accepted revisions to fetch terms from
+		if (empty($acceptedRevisions) && empty($previewTerms)) { return $terms; } // No accepted revisions to fetch terms from
 
 		// Remove posts' own terms from results
 		$resultTerms = array();
@@ -150,13 +150,11 @@ class Front extends Singleton {
 		$revisionsTerms = array_merge($previewTerms, $revisionsTerms); // Merge with terms from preview
 		if ($termsHaveObjectId) {
 			foreach ($revisionsTerms as $term) {
-				if ($previewPost && $term->object_id == $_GET['fpr-preview']) {
 
-					// Replace term's object ID from preview revision's to post's
+				// Replace fetched term's object ID from preview/accepted revision's to post's
+				if ($previewPost && $term->object_id == $_GET['fpr-preview']) {
 					$term->object_id = $previewPost;
 				} else if (isset($acceptedRevisions[$term->object_id])) {
-
-					// Replace term's object ID from accepted revision's to post's
 					$term->object_id = $acceptedRevisions[$term->object_id];
 				}
 			}
