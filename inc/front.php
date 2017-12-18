@@ -107,25 +107,22 @@ class Front extends Singleton {
 		if (is_preview()) { return $terms; }
 		if (!is_array($objectIDs)) { $objectIDs = array($objectIDs); }
 
-		// Preview specific revision
-		if (count($objectIDs) == 1 && !empty(current($objectIDs))) {
-			$postID = get_the_ID();
-
-			// Only get preview revision if the object in request is the current post
-			if (!empty($postID) && $postID == current($objectIDs)) {
-				if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $terms; }
-
-				if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
-					return wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
-				}
-			}
-		}
-
 		// Replace posts' terms with those of their accepted revisions
 		$acceptedRevisions = array();
+		$previewTerms = array();
+		$previewPost = false;
+		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview'])) {
+			$previewPost = wp_get_post_parent_id($_GET['fpr-preview']);
+		}
 		foreach ($objectIDs as $objectID) {
 			if (empty($objectID)) { continue; }
 			if (!in_array(get_post_type($objectID), Base::instance()->getEnabledPostTypes())) { continue; }
+
+			// Preview specific revision
+			if ($previewPost && $_GET['fpr-preview'] != $objectID && $previewPost == $objectID && current_user_can('edit_posts', $objectID)) {
+				$previewTerms = wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
+				continue;
+			}
 
 			// Accepted revision
 			$acceptedID = get_post_meta($objectID, '_fpr_accepted_revision_id', true);
@@ -142,29 +139,38 @@ class Front extends Singleton {
 
 			// Use the terms' object ID to identify which need to be replaced
 			foreach ($terms as $term) {
+				if ($term->object_id == $previewPost) { continue; }
 				if (in_array($term->object_id, $acceptedPosts)) { continue; }
 				$resultTerms []= $term;
 			}
 		}
 
 		// Get terms for the accepted revisions and update their `object_id` reference
-		$acceptedTerms = wp_get_object_terms(array_keys($acceptedRevisions), $taxonomies, $args);
+		$revisionsTerms = wp_get_object_terms(array_keys($acceptedRevisions), $taxonomies, $args);
+		$revisionsTerms = array_merge($previewTerms, $revisionsTerms); // Merge with terms from preview
 		if ($termsHaveObjectId) {
-			foreach ($acceptedTerms as $term) {
-				if (isset($acceptedRevisions[$term->object_id])) {
+			foreach ($revisionsTerms as $term) {
+				if ($previewPost && $term->object_id == $_GET['fpr-preview']) {
 
-					// Replace term's object ID from the accepted revision's to the post's
+					// Replace term's object ID from preview revision's to post's
+					$term->object_id = $previewPost;
+				} else if (isset($acceptedRevisions[$term->object_id])) {
+
+					// Replace term's object ID from accepted revision's to post's
 					$term->object_id = $acceptedRevisions[$term->object_id];
 				}
 			}
 		} else {
 
 			// Since terms for objects with no accepted revision couldn't be told apart get them separately
-			$resultTerms = wp_get_object_terms(array_diff($objectIDs, $acceptedPosts), $taxonomies, $args);
+			$resultIDs = array_diff($objectIDs, $acceptedPosts);
+			if (!empty($resultIDs)) {
+				$resultTerms = wp_get_object_terms($resultIDs, $taxonomies, $args);
+			}
 		}
 
 		// Merge untouched and updated terms
-		return array_merge($resultTerms, $acceptedTerms);
+		return array_merge($resultTerms, $revisionsTerms);
 	}
 }
 
