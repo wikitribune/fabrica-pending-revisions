@@ -105,19 +105,66 @@ class Front extends Singleton {
 	// Replace taxonomy term data with post's accepted revision terms
 	public function filterAcceptedRevisionTaxonomies($terms, $objectIDs, $taxonomies, $args) {
 		if (is_preview()) { return $terms; }
-		if (!is_array($objectIDs) || count($objectIDs) != 1 || empty(current($objectIDs))) { return $terms; }
-		$postID = current($objectIDs);
-		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $terms; }
+		if (!is_array($objectIDs)) { $objectIDs = array($objectIDs); }
 
 		// Preview specific revision
-		if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
-			return wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
+		if (count($objectIDs) == 1 && !empty(current($objectIDs))) {
+			$postID = get_the_ID();
+
+			// Only get preview revision if the object in request is the current post
+			if (!empty($postID) && $postID == current($objectIDs)) {
+				if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $terms; }
+
+				if (isset($_GET['fpr-preview']) && $_GET['fpr-preview'] != $postID && is_numeric($_GET['fpr-preview']) && current_user_can('edit_posts', $postID)) {
+					return wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
+				}
+			}
 		}
 
-		// Accepted revision
-		$acceptedID = get_post_meta($postID, '_fpr_accepted_revision_id', true);
-		if (!$acceptedID || $acceptedID == $postID) { return $terms; }
-		return wp_get_object_terms($acceptedID, $taxonomies, $args);
+		// Replace posts' terms with those of their accepted revisions
+		$acceptedRevisions = array();
+		foreach ($objectIDs as $objectID) {
+			if (empty($objectID)) { continue; }
+			if (!in_array(get_post_type($objectID), Base::instance()->getEnabledPostTypes())) { continue; }
+
+			// Accepted revision
+			$acceptedID = get_post_meta($objectID, '_fpr_accepted_revision_id', true);
+			if (!$acceptedID || $acceptedID == $objectID) { continue; }
+			$acceptedRevisions[$acceptedID] = $objectID;
+		}
+		if (empty($acceptedRevisions)) { return $terms; } // No accepted revisions to fetch terms from
+
+		// Remove posts' own terms from results
+		$resultTerms = array();
+		$acceptedPosts = array_values($acceptedRevisions);
+		$termsHaveObjectId = (isset($args['fields']) && $args['fields'] == 'all_with_object_id');
+		if ($termsHaveObjectId) {
+
+			// Use the terms' object ID to identify which need to be replaced
+			foreach ($terms as $term) {
+				if (in_array($term->object_id, $acceptedPosts)) { continue; }
+				$resultTerms []= $term;
+			}
+		}
+
+		// Get terms for the accepted revisions and update their `object_id` reference
+		$acceptedTerms = wp_get_object_terms(array_keys($acceptedRevisions), $taxonomies, $args);
+		if ($termsHaveObjectId) {
+			foreach ($acceptedTerms as $term) {
+				if (isset($acceptedRevisions[$term->object_id])) {
+
+					// Replace term's object ID from the accepted revision's to the post's
+					$term->object_id = $acceptedRevisions[$term->object_id];
+				}
+			}
+		} else {
+
+			// Since terms for objects with no accepted revision couldn't be told apart get them separately
+			$resultTerms = wp_get_object_terms(array_diff($objectIDs, $acceptedPosts), $taxonomies, $args);
+		}
+
+		// Merge untouched and updated terms
+		return array_merge($resultTerms, $acceptedTerms);
 	}
 }
 
