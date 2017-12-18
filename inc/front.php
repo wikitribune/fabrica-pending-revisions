@@ -129,7 +129,7 @@ class Front extends Singleton {
 			if (!$acceptedID || $acceptedID == $objectID) { continue; }
 			$acceptedRevisions[$acceptedID] = $objectID;
 		}
-		if (empty($acceptedRevisions) && empty($previewTerms)) { return $terms; } // No accepted revisions to fetch terms from
+		if (empty($acceptedRevisions) && empty($previewTerms)) { return $terms; } // No revisions to fetch terms from
 
 		// Remove posts' own terms from results
 		$resultTerms = array();
@@ -161,7 +161,7 @@ class Front extends Singleton {
 		} else {
 
 			// Since terms for objects with no accepted revision couldn't be told apart get them separately
-			$resultIDs = array_diff($objectIDs, $acceptedPosts);
+			$resultIDs = array_diff($objectIDs, array($previewPost), $acceptedPosts);
 			if (!empty($resultIDs)) {
 				$resultTerms = wp_get_object_terms($resultIDs, $taxonomies, $args);
 			}
