@@ -114,12 +114,14 @@ class Front extends Singleton {
 		if (isset($_GET['fpr-preview']) && is_numeric($_GET['fpr-preview'])) {
 			$previewPost = wp_get_post_parent_id($_GET['fpr-preview']);
 		}
+		$previewPostInObjects = false;
 		foreach ($objectIDs as $objectID) {
 			if (empty($objectID)) { continue; }
 			if (!in_array(get_post_type($objectID), Base::instance()->getEnabledPostTypes())) { continue; }
 
 			// Preview specific revision
 			if ($previewPost && $_GET['fpr-preview'] != $objectID && $previewPost == $objectID && current_user_can('edit_posts', $objectID)) {
+				$previewPostInObjects = true;
 				$previewTerms = wp_get_object_terms($_GET['fpr-preview'], $taxonomies, $args);
 				continue;
 			}
@@ -129,7 +131,7 @@ class Front extends Singleton {
 			if (!$acceptedID || $acceptedID == $objectID) { continue; }
 			$acceptedRevisions[$acceptedID] = $objectID;
 		}
-		if (empty($acceptedRevisions) && empty($previewTerms)) { return $terms; } // No revisions to fetch terms from
+		if (empty($acceptedRevisions) && !$previewPostInObjects) { return $terms; } // No revisions to fetch terms from
 
 		// Remove posts' own terms from results
 		$resultTerms = array();
