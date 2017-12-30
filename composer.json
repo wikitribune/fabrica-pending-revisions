@@ -12,7 +12,6 @@
     },
     "source": {
         "url": "git@bitbucket.org:yeswework/fabrica-pending-revisions.git",
-        "type": "git",
-        "reference": "master"
+        "type": "git"
     }
 }
