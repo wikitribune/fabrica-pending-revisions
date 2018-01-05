@@ -9,9 +9,5 @@
     ],
     "require": {
         "composer/installers": "*"
-    },
-    "source": {
-        "url": "git@bitbucket.org:yeswework/fabrica-pending-revisions.git",
-        "type": "git"
     }
 }
