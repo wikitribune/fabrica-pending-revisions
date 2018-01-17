@@ -406,26 +406,10 @@ class Base extends Singleton {
 			if (empty($postID) || empty($revisionID) || !is_numeric($objectID) || $objectID != $postID) {
 				return $value;
 			}
-			return get_post_meta($revisionID, '_thumbnail_id', $single);
+			return get_metadata('post', $revisionID, $key, $single);
 		}, 100, 4);
-
-		// Preload ACF meta fields – adapted from `acf_copy_postmeta()`
-		if (!function_exists('acf_maybe_get')) { return; }
-		$meta = get_post_meta($revisionID);
-		foreach ($meta as $name => $value) {
-			$key = acf_maybe_get($meta, '_' . $name);
-			if (!$key) { continue; }
-			$value = $value[0];
-			$key = $key[0];
-			if (!acf_is_field_key($key)) { continue; }
-
-			// Show user's suggestion in editor
-			add_filter('acf/prepare_field/key=' . $key, function($field) use ($revisionID) {
-				$field['value'] = get_field($field['key'], $revisionID);
-				return $field;
-			});
-		}
 	}
+
 
 	// Initialise page
 	public function initPostEdit() {
