@@ -738,13 +738,13 @@ class Base extends Singleton {
 		$revisionsCount = count($revisions);
 		$latestRevision = current($revisions);
 		$latestRevisionID = $latestRevision ? $latestRevision->ID : false;
-		$toRevision = isset($_GET['fpr-edit']) ? $_GET['fpr-edit'] : $latestRevisionID;
+		$revisionEditing = isset($_GET['fpr-edit']) ? $_GET['fpr-edit'] : $latestRevisionID;
 		$pendingCount = false;
-		$revisionsUrl = admin_url('revision.php?revision=' . $toRevision);
+		$revisionsUrl = admin_url('revision.php?revision=' . $revisionEditing);
 		$acceptedID = get_post_meta($post->ID, '_fpr_accepted_revision_id', true);
 		if ($acceptedID) {
 			if ($acceptedID != $latestRevisionID) {
-				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $toRevision);
+				$revisionsUrl = admin_url('revision.php?from=' . $acceptedID . '&to=' . $revisionEditing);
 			}
 			$pendingCount = 0;
 			foreach ($revisions as $revision) {
@@ -762,6 +762,7 @@ class Base extends Singleton {
 			'pendingCount' => $pendingCount,
 			'acceptedID' => $acceptedID,
 			'latestRevisionID' => $latestRevisionID,
+			'isAutosave' => wp_is_post_autosave($revisionEditing),
 			'canUserPublishPosts' => current_user_can('accept_revisions', $post->ID),
 			'nonce' => wp_create_nonce("fpr-editing-mode-{$post->ID}"),
 			'urls' => array(

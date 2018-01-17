@@ -48,6 +48,11 @@
 			});
 		});
 
+		// Hide autosave notification if editing the autosave revision
+		if (fprData.isAutosave) {
+			$('#has-newer-autosave').parent().hide();
+		}
+
 		// Show spinner when saving pending changes
 		$('#fpr-pending-revisions-submit').click(function(event) {
 			$("#major-publishing-actions .spinner").addClass("is-active");
