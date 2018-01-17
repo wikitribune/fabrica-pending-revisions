@@ -406,6 +406,7 @@ class Base extends Singleton {
 			if (empty($postID) || empty($revisionID) || !is_numeric($objectID) || $objectID != $postID) {
 				return $value;
 			}
+			if (strpos($key, '_fpr_') === 0) { return $value; }
 			return get_metadata('post', $revisionID, $key, $single);
 		}, 100, 4);
 	}
