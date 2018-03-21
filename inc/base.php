@@ -288,6 +288,7 @@ class Base extends Singleton {
 
 	// Update accepted revision if allowed and revision ID from which this has originated
 	public function saveAcceptedRevision($postID, $post, $update) {
+		if ($postArray['post_status'] != 'publish') { return; }
 		if (!in_array(get_post_type($postID), $this->getEnabledPostTypes())) { return; }
 
 		// Get the latest revision corresponding to the post, in order to save extra information per revision
