@@ -93,6 +93,10 @@
 	color: #a00;
 }
 
+.fpr-revisions-headers__type--draft {
+	color: #808080;
+}
+
 .fpr-revisions-headers__date-ago,
 .fpr-revisions-headers__author-name {
 	font-weight: bold;

@@ -64,7 +64,7 @@
 
 			// Change accepted (current published) revision tooltip styling
 			var formatAcceptedRevisionTooltip = function(model, value) {
-				if (!model.attributes.current) { return; }
+				if (!model.attributes.current || model.attributes.postStatus != 'publish') { return; }
 				var $byline = $('.revisions-tooltip .author-card .byline'),
 					$authorName = $('.author-name', $byline);
 
@@ -232,7 +232,7 @@
 
 			// Set title class and text according to revision status
 			$revisionType = $('.fpr-revisions-headers__type', $header);
-			if (revision.current) {
+			if (revision.current && revision.postStatus == 'publish') {
 				$revisionType.addClass('fpr-revisions-headers__type--current')
 					.text('Current Published ');
 			} else if (revision.pending && !revision.autosave) {
@@ -241,6 +241,9 @@
 			} else if (revision.autosave) {
 				$revisionType.addClass('fpr-revisions-headers__type--autosave')
 					.text('Autosave ');
+			} else if (revision.postStatus == 'draft') {
+				$revisionType.addClass('fpr-revisions-headers__type--draft')
+					.text('Draft ');
 			}
 
 			var $retrieveButton = $('.fpr-revisions-buttons__button--retrieve', $header),

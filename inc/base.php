@@ -685,6 +685,7 @@ class Base extends Singleton {
 				$revisionData['pending'] = true;
 			}
 		}
+		$revisionData['postStatus'] = get_post_status($post);
 
 		// Author role
 		global $wp_roles;
