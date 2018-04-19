@@ -10,7 +10,7 @@ require_once('base.php');
 class Front extends Singleton {
 	public function init() {
 		add_filter('the_content', array($this, 'filterAcceptedRevisionContent'), -1);
-		add_filter('the_excerpt', array($this, 'filterAcceptedRevisionExcerpt'), -1, 2);
+		add_filter('the_excerpt', array($this, 'filterAcceptedRevisionExcerpt'), -1);
 		add_filter('the_title', array($this, 'filterAcceptedRevisionTitle'), -1, 2);
 		add_filter('single_post_title', array($this, 'filterAcceptedRevisionTitle'), -1, 2);
 		add_filter('get_object_terms', array($this, 'filterAcceptedRevisionTaxonomies'), -1, 4);
@@ -37,8 +37,9 @@ class Front extends Singleton {
 	}
 
 	// Replace excerpt with post's accepted revision excerpt
-	public function filterAcceptedRevisionExcerpt($excerpt, $postID) {
+	public function filterAcceptedRevisionExcerpt($excerpt) {
 		if (is_preview() && !isset($_GET['fpr-preview'])) { return $excerpt; }
+		$postID = get_the_ID();
 		if (!in_array(get_post_type($postID), Base::instance()->getEnabledPostTypes())) { return $excerpt; }
 
 		// Preview specific revision
