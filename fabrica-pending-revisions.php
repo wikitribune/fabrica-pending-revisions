@@ -1,14 +1,14 @@
 <?php
 /*
 Plugin Name: Fabrica Pending Revisions
-Plugin URI:
-Description:
-Version: 0.0.22
+Plugin URI: https://github.com/wikitribune/fabrica-pending-revisions
+Description: WordPress plugin that enables updates to published content to be held in a draft state, or to be submitted for moderation and approval before they go live. It makes WP’s native Revisions more accountable by extending the system’s tracking of changes to taxonomy items and featured images.
+Version: 0.1.0
 Author: Fabrica
 Author URI: https://fabri.ca/
 Text Domain: fabrica-pending-revisions
-License: GPL-2.0+
-License URI: http://www.gnu.org/licenses/gpl-2.0.txt
+License: MIT
+License URI: https://opensource.org/licenses/MIT
 */
 
 namespace Fabrica\PendingRevisions;
