@@ -25,21 +25,21 @@ And for websites and blogs where:
 - Each post’s ‘accepted revision’ ID is tracked (in a hidden custom metafield).
 - As well as a post’s title and content, we add hooks to track taxonomies (categories, tags) and featured images per revision so that changes to these fields are also subject to moderation. (By default WordPress does not track them along with revisions, they are committed straight to the main post.) For metadata / custom fields, we currently assume the use of Advanced Custom Fields, which already tracks its fields along with revisions.
 - The publish / save button display logic is modified such that:
--- Non-editors can only ‘Suggest edit’, creating a revision that goes into the moderation queue.
--- Editors can both ‘Save pending’, which creates a revision that’s not yet published, and ‘Update’, which will make the current edit public by setting the post’s accepted revision.
+    - Non-editors can only ‘Suggest edit’, creating a revision that goes into the moderation queue.
+    - Editors can both ‘Save pending’, which creates a revision that’s not yet published, and ‘Update’, which will make the current edit public by setting the post’s accepted revision.
 - On the front-end, template tags are intercepted so that the accepted revision’s content is shown (everything including title, body, excerpt, taxonomies, featured images, ACF is hooked) – rather than the parent post object’s, as this contains the latest version, which may not yet have been approved.
 - The revisions timeline is enhanced to indicate:
--- The currently approved revision.
--- The subsequent revisions (which have not yet been approved).
--- Metadata about each revision: its author, which revision it was based on,
--- Per-revision actions including:
---- ‘Edit’ (allowing users to use an older revision as the basis of a new edit, in case the latest revision has been vandalised.
---- ‘Preview’ (which shows how the selected revision looks in the front-end, to allow for an in-context review of suggested changes)
---- For editors only: ‘Publish’, which allows them to select this revision as the currently accepted one.
+    - The currently approved revision.
+    - The subsequent revisions (which have not yet been approved).
+    - Metadata about each revision: its author, which revision it was based on,
+    - Per-revision actions including:
+        - ‘Edit’ (allowing users to use an older revision as the basis of a new edit, in case the latest revision has been vandalised.
+        - ‘Preview’ (which shows how the selected revision looks in the front-end, to allow for an in-context review of suggested changes)
+        - For editors only: ‘Publish’, which allows them to select this revision as the currently accepted one.
 - The editing mode can be decided per post type (in the plugin’s settings screen): the options are:
--- ‘Open’ (all changes are published immediately);
--- ‘Requires approval’, meaning changes by non-editors must be moderated;
--- or ‘Locked’, which means only editors can edit.
+    - ‘Open’ (all changes are published immediately);
+    - ‘Requires approval’, meaning changes by non-editors must be moderated;
+    - or ‘Locked’, which means only editors can edit.
 - Additionally, the editing mode can be overridden per post, to allow particular stories to be locked temporarily in exceptional circumstances, or conversely, to allow certain stories to be completely open even if the default is ‘requires approval’.
 
 ## Installation
