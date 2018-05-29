@@ -50,4 +50,4 @@ Download the zip file and install in WordPress via Plugins > Add New > Upload Pl
 - Published as an open-source project on Github, under the MIT license
 
 ## Who made this
-FCE was originally designed and coded by [Yes We Work](http://yeswework.com/) in conjunction with WikiTribune. [Fabrica](https://fabri.ca/) is a series of tools designed to improve WordPress for content creators and developers.
+FPR was originally designed and coded by [Yes We Work](http://yeswework.com/) in conjunction with WikiTribune. [Fabrica](https://fabri.ca/) is a series of tools designed to improve WordPress for content creators and developers.
