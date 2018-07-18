@@ -1,5 +1,5 @@
 # Fabrica Pending Revisions
-FPR is a WordPress plugin that enables updates to published Posts to be held in a draft state, or to be submitted for editorial moderation and approval, before they go live. It also works for Pages and Custom Post Types.
+FPR is a WordPress plugin developed by [Yes We Work](http://yeswework.com/) that enables updates to published Posts to be held in a draft state, or to be submitted for editorial moderation and approval, before they go live. It also works for Pages and Custom Post Types.
 
 It makes WP’s native Revisions more accountable by extending the system’s tracking of changes to taxonomy items and featured images. If Advanced Custom Fields is in use, FPR integrates the plugin’s versioning with WordPress’s own.
 
